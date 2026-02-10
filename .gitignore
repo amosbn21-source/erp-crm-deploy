@@ -18,6 +18,10 @@ uploads/
 *.db
 *.sqlite
 *.sqlite3
+*.db-pg.js
+*.security.js
+*.init-ai-db.js
+
 
 # Runtime data
 pids
