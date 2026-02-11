@@ -33,7 +33,7 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
 const pool = new Pool({
   host: process.env.POSTGRES_HOST || process.env.DB_HOST || 'localhost',
   user: process.env.POSTGRES_USER || process.env.DB_USER || 'postgres',
-  password: process.env.POSTGRES_PASSWORD || process.env.DB_PASS || 'Jenoubliepas0987654321',
+  password: process.env.POSTGRES_PASSWORD || process.env.DB_PASS  ,
   database: process.env.POSTGRES_DB || process.env.DB_NAME || 'erpcrm',
   port: process.env.POSTGRES_PORT || process.env.PG_PORT || 5432,
   max: 20,
@@ -41,9 +41,10 @@ const pool = new Pool({
   connectionTimeoutMillis: 20000,
 });
 
-const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID || '1577080080294850';
-const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET || 'YOUR_APP_SECRET';
+const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID  ;
+const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET  ;
 const APP_BASE_URL = process.env.APP_BASE_URL || 'http://localhost:3000';
+const FACEBOOK_VERIFY_TOKEN_GLOBAL = process.env.FACEBOOK_VERIFY_TOKEN_GLOBAL;
 
 if (!global.oauthStates) {
   global.oauthStates = new Map();
@@ -125,7 +126,7 @@ const authenticate = async (req, res, next) => {
     console.log('🔑 Token reçu (début):', token.substring(0, 20) + '...');
     
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret-key');
+      const decoded = jwt.verify(token, process.env.JWT_SECRET );
       
       const userId = decoded.userId || decoded.id;
       const userSchema = decoded.schema || `user_${userId}`;
@@ -5914,7 +5915,7 @@ app.get('/api/test-webhook/:userId/:accountId', async (req, res) => {
         platform: account.platform,
         verify_token: account.verify_token
       },
-      test_url: `https://alexis-soarable-materially.ngrok-free.dev/api/webhook/messenger/${userId}/${accountId}`,
+      test_url: `${APP_BASE_URL}/api/webhook/messenger/${userId}/${accountId}`,
       verification_url: `https://alexis-soarable-materially.ngrok-free.dev/api/webhook/messenger/${userId}/${accountId}?hub.mode=subscribe&hub.verify_token=${account.verify_token}&hub.challenge=TEST123`,
       instructions: [
         '1. Copiez l\'URL ci-dessus dans Facebook Developers',
@@ -7443,7 +7444,7 @@ app.post('/api/webhook-accounts/:id/setup-facebook', authenticate, enforceDataIs
     const { webhook_url, verify_token, fields = ['messages'] } = req.body;
     
     // URL publique avec ngrok
-    const publicWebhookUrl = webhook_url || `https://alexis-soarable-materially.ngrok-free.dev/api/webhook/messenger/${userId}/${id}`;
+    const publicWebhookUrl = webhook_url || `${APP_BASE_URL}/api/webhook/messenger/${userId}/${accountId}`;
     
     console.log('🔧 Configuration webhook Facebook:', {
       userId,
@@ -8133,7 +8134,10 @@ app.get('/api/auth/verify', (req, res) => {
     }
     
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret-key');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (!process.env.JWT_SECRET) {
+      throw new Error('JWT_SECRET non configuré');
+    }
     
     res.json({
       success: true,
