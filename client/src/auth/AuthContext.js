@@ -178,10 +178,7 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log('🔐 Tentative de connexion...');
       
-      const response = await axios.post(process.env.REACT_APP_API_URL ||'http://localhost:5000/api/auth/login', {
-        email,
-        password
-      });
+      const response = await axios.post(`${API_URL}/auth/login`, { email, password });
 
       console.log('✅ Réponse login:', response.data);
 
