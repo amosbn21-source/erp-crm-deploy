@@ -1,6 +1,8 @@
 // src/services/api.js - VERSION SANS IA
 import axios from 'axios';
 
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 // Configuration
 export const get = (url, params) => api.get(url, { params });
 export const post = (url, data) => api.post(url, data);
