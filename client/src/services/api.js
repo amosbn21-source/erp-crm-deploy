@@ -3,11 +3,7 @@ import axios from 'axios';
 
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-// Configuration
-export const get = (url, params) => api.get(url, { params });
-export const post = (url, data) => api.post(url, data);
-export const put = (url, data) => api.put(url, data);
-export const del = (url) => api.delete(url);
+
 
 axios.get(`${API_BASE}/api/dashboard/stats`);
 
@@ -46,6 +42,12 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Configuration
+export const get = (url, params) => api.get(url, { params });
+export const post = (url, data) => api.post(url, data);
+export const put = (url, data) => api.put(url, data);
+export const del = (url) => api.delete(url);
 
 // ==================== FONCTIONS DE BASE ====================
 
