@@ -2,20 +2,25 @@
 import axios from 'axios';
 
 // Configuration
-export const get = (url) => axios.get(`${API_BASE}/api${url}`);
+export const get = (url, params) => api.get(url, { params });
+export const post = (url, data) => api.post(url, data);
+export const put = (url, data) => api.put(url, data);
+export const del = (url) => api.delete(url);
 
 axios.get(`${API_BASE}/api/dashboard/stats`);
 
 // Instance Axios
 const api = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 10000,
+  baseURL: `${API_BASE}/api`,  // ← Le /api est AJOUTÉ ICI une seule fois
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
 // Ajouter le token automatiquement
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('authToken') || localStorage.getItem('token');
+    const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
