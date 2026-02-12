@@ -41,6 +41,35 @@ const pool = new Pool({
   connectionTimeoutMillis: 20000,
 });
 
+// Création des tables publiques si elles n'existent pas
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS public.users (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    name VARCHAR(100),
+    role VARCHAR(50) DEFAULT 'user',
+    schema_name VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_login TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS idx_users_email ON public.users(email);
+  
+  CREATE TABLE IF NOT EXISTS public.facebook_pages_mapping (
+    page_id VARCHAR(100) PRIMARY KEY,
+    platform VARCHAR(50) DEFAULT 'facebook_messenger',
+    user_id INTEGER,
+    schema_name VARCHAR(100),
+    account_id INTEGER,
+    page_name VARCHAR(200),
+    verify_token VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS idx_mapping_page_id ON public.facebook_pages_mapping(page_id);
+`);
+console.log('✅ Tables publiques créées/vérifiées');
+
 const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID  ;
 const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET  ;
 const APP_BASE_URL = process.env.APP_BASE_URL || 'http://localhost:3000';
