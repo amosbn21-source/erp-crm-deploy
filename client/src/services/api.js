@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 // Configuration
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+export const get = (url) => axios.get(`${API_BASE}/api${url}`);
 
 axios.get(`${API_BASE}/api/dashboard/stats`);
 
