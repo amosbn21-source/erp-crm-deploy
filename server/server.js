@@ -30,12 +30,12 @@ if (!fs.existsSync(UPLOADS_PATH)) {
 console.log('📁 Dossier uploads:', UPLOADS_PATH);
 
 // ==================== CONFIGURATION POSTGRESQL ====================
+// NOUVEAU - Compatible Render
 const pool = new Pool({
-  host: process.env.POSTGRES_HOST || process.env.DB_HOST || 'localhost',
-  user: process.env.POSTGRES_USER || process.env.DB_USER || 'postgres',
-  password: process.env.POSTGRES_PASSWORD || process.env.DB_PASS  ,
-  database: process.env.POSTGRES_DB || process.env.DB_NAME || 'erpcrm',
-  port: process.env.POSTGRES_PORT || process.env.PG_PORT || 5432,
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false // OBLIGATOIRE pour Render
+  },
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 20000,
