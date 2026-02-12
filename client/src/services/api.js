@@ -4,6 +4,8 @@ import axios from 'axios';
 // Configuration
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
+axios.get(`${API_BASE}/api/dashboard/stats`);
+
 // Instance Axios
 const api = axios.create({
   baseURL: API_BASE_URL,
