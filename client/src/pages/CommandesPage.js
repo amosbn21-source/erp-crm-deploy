@@ -344,7 +344,7 @@ export default function CommandesPage() {
       console.log('📝 Création devis avec données:', documentData);
       
       // Créer le document
-      const createRes = await securePost('/api/documents', documentData);
+      const createRes = await securePost('/documents', documentData);
       
       // DEBUG: Voir la structure complète de la réponse
       console.log('📦 Réponse COMPLÈTE POST /api/documents:', createRes);
@@ -485,7 +485,7 @@ export default function CommandesPage() {
       console.log('📝 Création facture avec données:', documentData);
       
       // Créer la facture
-      const createRes = await securePost('/api/documents', documentData);
+      const createRes = await securePost('/documents', documentData);
       
       // DEBUG: Voir la structure complète de la réponse
       console.log('📦 Réponse COMPLÈTE POST /api/documents:', createRes);
@@ -801,7 +801,7 @@ export default function CommandesPage() {
         res = await securePut(`/api/commandes/${editingCommande.id}`, commandeData);
       } else {
         console.log('➕ Création nouvelle commande');
-        res = await securePost('/api/commandes', commandeData);
+        res = await securePost('/commandes', commandeData);
       }
       
       console.log('✅ Réponse API:', res.data);
