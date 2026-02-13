@@ -29,7 +29,7 @@ export default function DocumentPage() {
 
   const fetchDocument = async () => {
     try {
-      const res = await secureGet(`/api/documents/${id}`);
+      const res = await secureGet(`/documents/${id}`);
       console.log('📄 Réponse API document:', res.data);
       
       // ✅ CORRECTION : Extraire les données de res.data.data
@@ -126,7 +126,7 @@ export default function DocumentPage() {
     
     // Vérifier si un devis existe déjà pour cette commande
     try {
-      const documentsRes = await secureGet('/api/documents');
+      const documentsRes = await secureGet('/documents');
       const documentsData = documentsRes.data?.data || [];
       
       const devisExistants = documentsData.filter(doc => 
@@ -295,7 +295,7 @@ export default function DocumentPage() {
     
     // Vérifier si une facture existe déjà
     try {
-      const documentsRes = await secureGet('/api/documents');
+      const documentsRes = await secureGet('/documents');
       const documentsData = documentsRes.data?.data || [];
       
       const facturesExistantes = documentsData.filter(doc => 
