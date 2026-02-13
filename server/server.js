@@ -59,6 +59,9 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
       // Tenter de reconnecter ? Optionnel
     });
 
+    module.exports = { pool, app };
+    
+
     const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID  ;
     const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET  ;
     const APP_BASE_URL = process.env.APP_BASE_URL || 'http://localhost:3000';
