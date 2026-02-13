@@ -1,20 +1,9 @@
-// src/routes/documents.js - VERSION AVEC ISOLATION DES DONNÉES
+// src/routes/documents.js - VERSION CORRIGÉE (utilise req.app.locals.pool)
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
-
-const pool = new Pool({
-  host: process.env.POSTGRES_HOST || 'localhost',
-  user: process.env.POSTGRES_USER || 'postgres',
-  password: process.env.POSTGRES_PASSWORD || '',
-  database: process.env.POSTGRES_DB || 'erpcrm',
-  port: process.env.POSTGRES_PORT || 5432,
-  max: 20,
-  idleTimeoutMillis: 30000,
-});
 
 // Fonction pour réparer automatiquement la structure de la table
-async function repairDocumentTable(schemaName) {
+async function repairDocumentTable(schemaName, pool) {
   try {
     console.log(`🔧 Réparation de la table documents dans ${schemaName}...`);
     
@@ -128,14 +117,14 @@ router.use((req, res, next) => {
   next();
 });
 
-// Ajoutez cette route de debug
+// Route de debug (inchangée)
 router.get('/debug/:id', async (req, res) => {
   const { id } = req.params;
   const schemaName = req.userSchema;
+  const db = req.app.locals.pool;
   
   try {
-    // Requête complète
-    const result = await pool.query(
+    const result = await db.query(
       `SELECT * FROM "${schemaName}".documents WHERE id = $1`,
       [id]
     );
@@ -169,8 +158,8 @@ router.get('/debug/:id', async (req, res) => {
   }
 });
 
-// Fonction pour créer les tables de documents si nécessaire
-async function ensureDocumentTables(schemaName, userId) {
+// Fonction pour créer les tables de documents si nécessaire (avec pool)
+async function ensureDocumentTables(schemaName, userId, pool) {
   try {
     // Vérifier si le schéma existe
     const schemaExists = await pool.query(`
@@ -219,7 +208,7 @@ async function ensureDocumentTables(schemaName, userId) {
           user_id INTEGER NOT NULL DEFAULT 0
         )
       `);
-      await repairDocumentTable(schemaName);
+      await repairDocumentTable(schemaName, pool);
     }
     
     // Table document_lignes
@@ -256,7 +245,7 @@ async function ensureDocumentTables(schemaName, userId) {
 }
 
 // Fonction pour vérifier et ajouter les colonnes manquantes
-async function fixMissingColumns(schemaName) {
+async function fixMissingColumns(schemaName, pool) {
   try {
     console.log(`🔧 Vérification des colonnes manquantes pour ${schemaName}.documents...`);
     
@@ -302,7 +291,7 @@ async function fixMissingColumns(schemaName) {
   }
 }
 
-// Helper pour calculer totaux
+// Helper pour calculer totaux (inchangé)
 const computeTotals = (lignes = [], tvaRate = 20) => {
   const total_ht = lignes.reduce((sum, l) => {
     const quantite = Number(l.quantite || 1);
@@ -323,15 +312,15 @@ const computeTotals = (lignes = [], tvaRate = 20) => {
 router.get('/', async (req, res) => {
   const schemaName = req.userSchema;
   const userId = req.user?.userId || req.user?.id;
+  const db = req.app.locals.pool;
   
   console.log(`📄 GET /api/documents - Schéma: ${schemaName}, UserID: ${userId}`);
   
   try {
     // Assurer que les tables existent
-    await ensureDocumentTables(schemaName, userId);
+    await ensureDocumentTables(schemaName, userId, db);
     
-    // ✅ MODIFIEZ LA REQUÊTE POUR SÉLECTIONNER TOUS LES CHAMPS CLIENTS
-    const result = await pool.query(
+    const result = await db.query(
       `SELECT 
         id, 
         reference, 
@@ -370,7 +359,7 @@ router.get('/', async (req, res) => {
     
     if (error.message.includes('n\'existe pas') || error.code === '42P01') {
       // Table n'existe pas, créer et retourner vide
-      await ensureDocumentTables(schemaName, userId);
+      await ensureDocumentTables(schemaName, userId, db);
       return res.json({
         success: true,
         data: [],
@@ -392,15 +381,16 @@ router.get('/:id', async (req, res) => {
   const { id } = req.params;
   const schemaName = req.userSchema;
   const userId = req.user?.userId || req.user?.id;
+  const db = req.app.locals.pool;
   
   console.log(`📄 GET /api/documents/${id} - Schéma: ${schemaName}`);
   
   try {
     // Assurer que les tables existent
-    await ensureDocumentTables(schemaName, userId);
+    await ensureDocumentTables(schemaName, userId, db);
     
     // Récupérer le document
-    const docRes = await pool.query(
+    const docRes = await db.query(
       `SELECT * FROM "${schemaName}".documents WHERE id = $1`,
       [id]
     );
@@ -416,7 +406,7 @@ router.get('/:id', async (req, res) => {
     const doc = docRes.rows[0];
     
     // Récupérer les lignes
-    const lignesRes = await pool.query(
+    const lignesRes = await db.query(
       `SELECT * FROM "${schemaName}".document_lignes WHERE document_id = $1`,
       [id]
     );
@@ -433,7 +423,7 @@ router.get('/:id', async (req, res) => {
     console.error(`❌ Erreur GET /api/documents/${id} pour ${schemaName}:`, error);
     
     if (error.message.includes('n\'existe pas') || error.code === '42P01') {
-      await ensureDocumentTables(schemaName, userId);
+      await ensureDocumentTables(schemaName, userId, db);
       return res.status(404).json({
         success: false,
         error: 'Document introuvable',
@@ -453,6 +443,7 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   const schemaName = req.userSchema;
   const userId = req.user?.userId || req.user?.id;
+  const db = req.app.locals.pool;
   const { 
     type = 'devis', 
     tva_rate = 20, 
@@ -467,13 +458,13 @@ router.post('/', async (req, res) => {
   console.log(`📄 POST /api/documents - Schéma: ${schemaName}`);
   console.log('📦 Données reçues:', { type, tva_rate, lignes: lignes.length });
   
-  const client = await pool.connect();
+  const client = await db.connect();
   
   try {
     // Assurer que les tables existent
-    await ensureDocumentTables(schemaName, userId);
+    await ensureDocumentTables(schemaName, userId, db);
 
-    await fixMissingColumns(schemaName);
+    await fixMissingColumns(schemaName, db);
     
     await client.query('BEGIN');
     
@@ -503,7 +494,7 @@ router.post('/', async (req, res) => {
         client_email,
         client_adresse,
         date_emission,
-        userId || req.user?.id || 0  // Assurez-vous d'avoir l'ID utilisateur
+        userId || req.user?.id || 0
       ]
     );
     
@@ -555,7 +546,7 @@ router.post('/', async (req, res) => {
     if (error.message.includes('n\'existe pas') || error.code === '42703') {
       console.log(`🔄 Tentative de réparation pour ${schemaName}...`);
       try {
-        await repairDocumentTable(schemaName);
+        await repairDocumentTable(schemaName, db);
         return res.status(503).json({
           success: false,
           error: 'Table réparée, veuillez réessayer',
@@ -580,6 +571,7 @@ router.put('/:id', async (req, res) => {
   const { id } = req.params;
   const schemaName = req.userSchema;
   const userId = req.user?.userId || req.user?.id;
+  const db = req.app.locals.pool;
   const { 
     type, 
     tva_rate, 
@@ -594,10 +586,10 @@ router.put('/:id', async (req, res) => {
   
   console.log(`📄 PUT /api/documents/${id} - Schéma: ${schemaName}`);
   
-  const client = await pool.connect();
+  const client = await db.connect();
   
   try {
-    await ensureDocumentTables(schemaName, userId);
+    await ensureDocumentTables(schemaName, userId, db);
     
     await client.query('BEGIN');
     
@@ -749,13 +741,14 @@ router.delete('/:id', async (req, res) => {
   const { id } = req.params;
   const schemaName = req.userSchema;
   const userId = req.user?.userId || req.user?.id;
+  const db = req.app.locals.pool;
   
   console.log(`📄 DELETE /api/documents/${id} - Schéma: ${schemaName}`);
   
-  const client = await pool.connect();
+  const client = await db.connect();
   
   try {
-    await ensureDocumentTables(schemaName, userId);
+    await ensureDocumentTables(schemaName, userId, db);
     
     await client.query('BEGIN');
     
@@ -811,6 +804,7 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// Route proxy pour génération PDF (inchangée)
 router.post('/:id/generate-pdf-puppeteer', async (req, res) => {
   const { id } = req.params;
   const schemaName = req.userSchema;
@@ -818,7 +812,6 @@ router.post('/:id/generate-pdf-puppeteer', async (req, res) => {
   console.log(`📄 Génération PDF via documents.js pour doc #${id}`);
   
   try {
-    // Redirige vers documents-puppeteer
     const proxyRes = await fetch(`http://localhost:${process.env.PORT || 5000}/api/documents-puppeteer/${id}/generate-pdf-puppeteer`, {
       method: 'POST',
       headers: {
