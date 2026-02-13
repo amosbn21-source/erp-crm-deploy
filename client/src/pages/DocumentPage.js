@@ -80,7 +80,7 @@ export default function DocumentPage() {
         setLoading(true); // Ajoutez ceci pour montrer le chargement
         
         // ✅ CORRECTION : Ajouter timeout à 60000ms (60 secondes)
-        const res = await securePost(`/api/documents-puppeteer/${id}/generate-pdf-puppeteer`, {}, {
+        const res = await securePost(`/documents-puppeteer/${id}/generate-pdf-puppeteer`, {}, {
         timeout: 60000 // ⬅️ AUGMENTEZ LE TIMEOUT ICI
         });
         
@@ -234,7 +234,7 @@ export default function DocumentPage() {
       setTimeout(async () => {
         try {
           console.log(`📄 Début génération PDF pour devis #${documentId}`);
-          const pdfRes = await securePost(`/api/documents-puppeteer/${documentId}/generate-pdf-puppeteer`, {}, {
+          const pdfRes = await securePost(`/documents-puppeteer/${documentId}/generate-pdf-puppeteer`, {}, {
             timeout: 60000
           });
           
@@ -419,7 +419,7 @@ export default function DocumentPage() {
       // 4. Mettre à jour le statut de la commande
       if (commande.statut !== 'facturée' && commande.statut !== 'livrée') {
         try {
-          await securePost(`/api/commandes/${commande.id}/update-statut`, {
+          await securePost(`/commandes/${commande.id}/update-statut`, {
             statut: 'facturée'
           });
           console.log('📝 Statut commande mis à jour: facturée');
@@ -437,7 +437,7 @@ export default function DocumentPage() {
       setTimeout(async () => {
         try {
           console.log(`📄 Début génération PDF pour facture #${documentId}`);
-          const pdfRes = await securePost(`/api/documents-puppeteer/${documentId}/generate-pdf-puppeteer`, {}, {
+          const pdfRes = await securePost(`/documents-puppeteer/${documentId}/generate-pdf-puppeteer`, {}, {
             timeout: 60000
           });
           
@@ -512,12 +512,12 @@ export default function DocumentPage() {
     
     try {
       // 1. Supprimer le document
-      await securePost(`/api/documents/${document.id}/delete`);
+      await securePost(`/documents/${document.id}/delete`);
       
       // 2. Supprimer le fichier PDF associé s'il existe
       if (document.pdf_filename) {
         try {
-          await securePost(`/api/documents/${document.id}/delete-pdf`);
+          await securePost(`/documents/${document.id}/delete-pdf`);
         } catch (pdfErr) {
           console.warn('⚠️ Impossible de supprimer le PDF:', pdfErr.message);
         }
@@ -588,7 +588,7 @@ export default function DocumentPage() {
     setLoading(true);
     
     try {
-      const res = await securePost(`/api/documents/${document.id}/send-email`, {
+      const res = await securePost(`/documents/${document.id}/send-email`, {
         recipient: document.client_email,
         subject: `${document.type === 'facture' ? 'Facture' : 'Devis'} - ${document.reference}`,
         message: `Bonjour,\n\nVeuillez trouver ci-joint votre ${document.type} ${document.reference}.\n\nCordialement`
