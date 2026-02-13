@@ -1,80 +1,194 @@
+// src/services/api.js - VERSION SANS IA
 import axios from 'axios';
 
-const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+// Configuration
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
+// Instance Axios
 const api = axios.create({
-  baseURL: `${API_BASE}/api`,
-  headers: { 'Content-Type': 'application/json' },
+  baseURL: API_BASE_URL,
+  timeout: 10000,
 });
 
-// Intercepteur pour ajouter le token JWT
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+// Ajouter le token automatiquement
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('authToken') || localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Gérer les erreurs 401
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
   }
-  return config;
-});
+);
 
-// ========== FONCTIONS DE BASE ==========
-export const get = (url, params) => api.get(url, { params });
-export const post = (url, data) => api.post(url, data);
-export const put = (url, data) => api.put(url, data);
-export const del = (url) => api.delete(url);
+// ==================== FONCTIONS SÉCURISÉES ====================
 
-// ========== VERSIONS SÉCURISÉES (AVEC TRY/CATCH) ==========
-export const secureGet = async (url, params) => {
+export const secureGet = async (url, config = {}) => {
+  console.log(`🔍 [API] GET: ${url}`);
+  
   try {
-    const response = await api.get(url, { params });
-    return response.data;
+    const response = await api.get(url, config);
+    return response;
   } catch (error) {
-    console.error(`❌ secureGet error for ${url}:`, error);
+    console.error(`❌ [API] GET error for ${url}:`, {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data
+    });
     throw error;
   }
 };
 
-export const securePost = async (url, data) => {
+export const securePost = async (url, data, config = {}) => {
+  console.log(`📝 [API] POST: ${url}`, data);
+  
   try {
-    const response = await api.post(url, data);
-    return response.data;
+    const response = await api.post(url, data, config);
+    return response;
   } catch (error) {
-    console.error(`❌ securePost error for ${url}:`, error);
+    console.error(`❌ [API] POST error for ${url}:`, {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data
+    });
     throw error;
   }
 };
 
-export const securePut = async (url, data) => {
+export const securePut = async (url, data, config = {}) => {
+  console.log(`✏️ [API] PUT: ${url}`, data);
+  
   try {
-    const response = await api.put(url, data);
-    return response.data;
+    const response = await api.put(url, data, config);
+    return response;
   } catch (error) {
-    console.error(`❌ securePut error for ${url}:`, error);
+    console.error(`❌ [API] PUT error for ${url}:`, {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data
+    });
     throw error;
   }
 };
 
-export const secureDelete = async (url) => {
+export const secureDelete = async (url, config = {}) => {
+  console.log(`🗑️ [API] DELETE: ${url}`);
+  
   try {
-    const response = await api.delete(url);
-    return response.data;
+    const response = await api.delete(url, config);
+    return response;
   } catch (error) {
-    console.error(`❌ secureDelete error for ${url}:`, error);
+    console.error(`❌ [API] DELETE error for ${url}:`, {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data
+    });
     throw error;
   }
 };
 
-// ========== FONCTION SPÉCIALE POUR UPLOAD DE FICHIERS ==========
-export const secureUpload = async (url, formData, onUploadProgress) => {
+export const securePatch = async (url, data, config = {}) => {
+  console.log(`🔧 [API] PATCH: ${url}`, data);
+  
+  try {
+    const response = await api.patch(url, data, config);
+    return response;
+  } catch (error) {
+    console.error(`❌ [API] PATCH error for ${url}:`, {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data
+    });
+    throw error;
+  }
+};
+
+export const secureUpload = async (url, formData, config = {}) => {
+  console.log(`📤 [API] UPLOAD: ${url}`);
+  
   try {
     const response = await api.post(url, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      onUploadProgress,
+      ...config,
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        ...config?.headers,
+      }
     });
-    return response.data;
+    return response;
   } catch (error) {
-    console.error(`❌ secureUpload error for ${url}:`, error);
+    console.error(`❌ [API] UPLOAD error for ${url}:`, {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data
+    });
     throw error;
   }
+};
+
+// ==================== MÉTHODES UTILITAIRES ====================
+
+/**
+ * Formater les paramètres de date pour l'API
+ */
+export const formatDateForAPI = (date) => {
+  if (!date) return null;
+  
+  if (date instanceof Date) {
+    return date.toISOString().split('T')[0];
+  }
+  
+  return date;
+};
+
+/**
+ * Gérer le téléchargement de fichier blob
+ */
+export const handleBlobDownload = (blob, filename) => {
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
+};
+
+/**
+ * Construire une URL avec filtres
+ */
+export const buildFilterUrl = (baseUrl, filters = {}) => {
+  const params = new URLSearchParams();
+  
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      if (Array.isArray(value)) {
+        value.forEach(v => params.append(`${key}[]`, v));
+      } else {
+        params.append(key, value);
+      }
+    }
+  });
+  
+  const queryString = params.toString();
+  return queryString ? `${baseUrl}?${queryString}` : baseUrl;
 };
 
 export default api;
