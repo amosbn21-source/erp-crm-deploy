@@ -9,7 +9,7 @@ axios.get(`${API_BASE}/api/dashboard/stats`);
 
 // Instance Axios
 const api = axios.create({
-  baseURL: `${API_BASE}/api`,  // ← Le /api est AJOUTÉ ICI une seule fois
+  baseURL: process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL + '/api' : '/api',  
   headers: {
     'Content-Type': 'application/json',
   },
@@ -44,7 +44,7 @@ api.interceptors.response.use(
 );
 
 // Configuration
-export const get = (url, params) => api.get(url, { params });
+export const get = (url, params) => (url, { params });
 export const post = (url, data) => api.post(url, data);
 export const put = (url, data) => api.put(url, data);
 export const del = (url) => api.delete(url);
