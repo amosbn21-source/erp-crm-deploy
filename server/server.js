@@ -257,20 +257,20 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
 
     async function createUserTables(userId) {
       const schemaName = `user_${userId}`;
-      
       console.log(`🔧 Création des tables pour: ${schemaName}`);
-      
+    
       const client = await pool.connect();
-      
+    
       try {
+        // === TRANSACTION 1 : CRÉATION DU SCHÉMA ===
         await client.query('BEGIN');
-        
-        // ==================== ÉTAPE 1: CRÉER LE SCHÉMA ====================
         await client.query(`CREATE SCHEMA IF NOT EXISTS "${schemaName}"`);
+        await client.query('COMMIT');
         console.log(`✅ Schéma ${schemaName} créé`);
-        
-        // ==================== ÉTAPE 2: TABLES ERP-CRM DE BASE ====================
-        
+    
+        // === TRANSACTION 2 : TABLES PRINCIPALES (ERP-CRM) ===
+        await client.query('BEGIN');
+    
         // 2.1 Table contacts
         await client.query(`
           CREATE TABLE IF NOT EXISTS "${schemaName}".contacts (
@@ -278,7 +278,7 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
             nom VARCHAR(100) NOT NULL,
             prenom VARCHAR(100),
             telephone VARCHAR(20),
-            email VARCHAR(100)  UNIQUE,
+            email VARCHAR(100) UNIQUE,
             compte VARCHAR(100),
             type_contact VARCHAR(20) DEFAULT 'prospect',
             entreprise VARCHAR(100),
@@ -292,7 +292,7 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
           )
         `);
         console.log(`✅ Table ${schemaName}.contacts créée`);
-        
+    
         // 2.2 Table produits
         await client.query(`
           CREATE TABLE IF NOT EXISTS "${schemaName}".produits (
@@ -313,7 +313,7 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
           )
         `);
         console.log(`✅ Table ${schemaName}.produits créée`);
-        
+    
         // 2.3 Table commandes
         await client.query(`
           CREATE TABLE IF NOT EXISTS "${schemaName}".commandes (
@@ -334,7 +334,7 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
           )
         `);
         console.log(`✅ Table ${schemaName}.commandes créée`);
-        
+    
         // 2.4 Table lignes_commande
         await client.query(`
           CREATE TABLE IF NOT EXISTS "${schemaName}".lignes_commande (
@@ -345,14 +345,11 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
             prix_unitaire DECIMAL(10, 2) NOT NULL,
             remise DECIMAL(5, 2) DEFAULT 0,
             total_ligne DECIMAL(12, 2) GENERATED ALWAYS AS (quantite * prix_unitaire * (1 - remise/100)) STORED,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            
-            CONSTRAINT chk_quantite_positive CHECK (quantite > 0),
-            CONSTRAINT chk_remise_valide CHECK (remise >= 0 AND remise <= 100)
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
           )
         `);
         console.log(`✅ Table ${schemaName}.lignes_commande créée`);
-        
+    
         // 2.5 Table opportunites
         await client.query(`
           CREATE TABLE IF NOT EXISTS "${schemaName}".opportunites (
@@ -369,7 +366,7 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
           )
         `);
         console.log(`✅ Table ${schemaName}.opportunites créée`);
-        
+    
         // 2.6 Table categories
         await client.query(`
           CREATE TABLE IF NOT EXISTS "${schemaName}".categories (
@@ -382,7 +379,7 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
           )
         `);
         console.log(`✅ Table ${schemaName}.categories créée`);
-        
+    
         // 2.7 Table documents
         await client.query(`
           CREATE TABLE IF NOT EXISTS "${schemaName}".documents (
@@ -411,10 +408,8 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
           )
         `);
         console.log(`✅ Table ${schemaName}.documents créée`);
-        
-        // ==================== ÉTAPE 3: TABLES DE SUPPORT ====================
-        
-        // 3.1 Table activity_logs
+    
+        // 2.8 Table activity_logs
         await client.query(`
           CREATE TABLE IF NOT EXISTS "${schemaName}".activity_logs (
             id SERIAL PRIMARY KEY,
@@ -429,8 +424,8 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
           )
         `);
         console.log(`✅ Table ${schemaName}.activity_logs créée`);
-        
-        // 3.2 Table notifications
+    
+        // 2.9 Table notifications
         await client.query(`
           CREATE TABLE IF NOT EXISTS "${schemaName}".notifications (
             id SERIAL PRIMARY KEY,
@@ -447,8 +442,8 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
           )
         `);
         console.log(`✅ Table ${schemaName}.notifications créée`);
-        
-        // 3.3 Table user_settings
+    
+        // 2.10 Table user_settings
         await client.query(`
           CREATE TABLE IF NOT EXISTS "${schemaName}".user_settings (
             id SERIAL PRIMARY KEY,
@@ -462,8 +457,8 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
           )
         `);
         console.log(`✅ Table ${schemaName}.user_settings créée`);
-        
-        // 3.4 Table deleted_entities
+    
+        // 2.11 Table deleted_entities
         await client.query(`
           CREATE TABLE IF NOT EXISTS "${schemaName}".deleted_entities (
             id SERIAL PRIMARY KEY,
@@ -475,10 +470,8 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
           )
         `);
         console.log(`✅ Table ${schemaName}.deleted_entities créée`);
-
-        
-
-        // 3.5 Table webhook_accounts
+    
+        // 2.12 Table webhook_accounts (version simplifiée sans colonnes problématiques)
         await client.query(`
           CREATE TABLE IF NOT EXISTS "${schemaName}".webhook_accounts (
             id SERIAL PRIMARY KEY,
@@ -493,25 +486,25 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
             phone_id VARCHAR(100),
             business_id VARCHAR(100),
             page_id VARCHAR(100),
-            page_name VARCHAR(200), -- AJOUTER
+            page_name VARCHAR(200),
             webhook_url VARCHAR(500),
-            verify_token VARCHAR(255), -- AJOUTER
-            webhook_fields TEXT[] DEFAULT '{}', -- AJOUTER
-            graph_api_version VARCHAR(10) DEFAULT 'v18.0', -- AJOUTER
+            verify_token VARCHAR(255),
+            webhook_fields TEXT[] DEFAULT '{}',
+            graph_api_version VARCHAR(10) DEFAULT 'v18.0',
             ai_enabled BOOLEAN DEFAULT false,
             auto_reply BOOLEAN DEFAULT false,
             is_active BOOLEAN DEFAULT true,
-            meta_verified BOOLEAN DEFAULT false, -- AJOUTER
-            verification_status VARCHAR(50) DEFAULT 'pending', -- AJOUTER
+            meta_verified BOOLEAN DEFAULT false,
+            verification_status VARCHAR(50) DEFAULT 'pending',
             config_data JSONB DEFAULT '{}',
             last_sync TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
           )
         `);
-      console.log(`✅ Table ${schemaName}.webhook_accounts créée avec colonnes IA`);
-
-        // 3.6 Table automation_settings
+        console.log(`✅ Table ${schemaName}.webhook_accounts créée`);
+    
+        // 2.13 Table automation_settings
         await client.query(`
           CREATE TABLE IF NOT EXISTS "${schemaName}".automation_settings (
             id SERIAL PRIMARY KEY,
@@ -529,12 +522,12 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
           )
         `);
         console.log(`✅ Table ${schemaName}.automation_settings créée`);
-
-        // 3.7 Table conversations
+    
+        // 2.14 Table conversations
         await client.query(`
           CREATE TABLE IF NOT EXISTS "${schemaName}".conversations (
             id SERIAL PRIMARY KEY,
-            contact_id INTEGER,
+            contact_id INTEGER REFERENCES "${schemaName}".contacts(id),
             channel VARCHAR(50) NOT NULL,
             contexte JSONB DEFAULT '{}',
             derniere_interaction TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -545,88 +538,89 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
           )
         `);
         console.log(`✅ Table ${schemaName}.conversations créée`);
-
-        // 3.8 Table messages
+    
+        // 2.15 Table messages
         await client.query(`
           CREATE TABLE IF NOT EXISTS "${schemaName}".messages (
             id SERIAL PRIMARY KEY,
-            conversation_id INTEGER,
-            contact_id INTEGER,
+            conversation_id INTEGER REFERENCES "${schemaName}".conversations(id),
+            contact_id INTEGER REFERENCES "${schemaName}".contacts(id),
             type VARCHAR(20) NOT NULL,
             contenu TEXT NOT NULL,
             metadata JSONB DEFAULT '{}',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
           )
         `);
-
-        // Index pour contacts
+        console.log(`✅ Table ${schemaName}.messages créée`);
+    
+        // === INDEX POUR TABLES PRINCIPALES ===
+        // Contacts
         await client.query(`CREATE INDEX IF NOT EXISTS idx_contacts_email ON "${schemaName}".contacts(email)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_contacts_nom ON "${schemaName}".contacts(nom)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_contacts_entreprise ON "${schemaName}".contacts(entreprise)`);
-        
-        // Index pour produits
+        // Produits
         await client.query(`CREATE INDEX IF NOT EXISTS idx_produits_nom ON "${schemaName}".produits(nom)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_produits_categorie ON "${schemaName}".produits(categorie)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_produits_actif ON "${schemaName}".produits(actif)`);
-        
-        // Index pour commandes
+        // Commandes
         await client.query(`CREATE INDEX IF NOT EXISTS idx_commandes_numero ON "${schemaName}".commandes(numero_commande)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_commandes_statut ON "${schemaName}".commandes(statut)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_commandes_date ON "${schemaName}".commandes(date)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_commandes_contact ON "${schemaName}".commandes(contact_id)`);
-        
-        // Index pour lignes_commande
+        // Lignes commande
         await client.query(`CREATE INDEX IF NOT EXISTS idx_lignes_commande_commande ON "${schemaName}".lignes_commande(commande_id)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_lignes_commande_produit ON "${schemaName}".lignes_commande(produit_id)`);
-        
-        // Index pour opportunites
+        // Opportunites
         await client.query(`CREATE INDEX IF NOT EXISTS idx_opportunites_statut ON "${schemaName}".opportunites(statut)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_opportunites_contact ON "${schemaName}".opportunites(contact_id)`);
-        
-        // Index pour categories
+        // Categories
         await client.query(`CREATE INDEX IF NOT EXISTS idx_categories_type ON "${schemaName}".categories(type)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_categories_parent ON "${schemaName}".categories(parent_id)`);
-        
-        // Index pour documents
+        // Documents
         await client.query(`CREATE INDEX IF NOT EXISTS idx_documents_type ON "${schemaName}".documents(type)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_documents_reference ON "${schemaName}".documents(reference)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_documents_statut ON "${schemaName}".documents(statut)`);
-        
-        // Index pour tables de support
+        // Activity logs
         await client.query(`CREATE INDEX IF NOT EXISTS idx_activity_user ON "${schemaName}".activity_logs(user_id)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_activity_action ON "${schemaName}".activity_logs(action)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_activity_date ON "${schemaName}".activity_logs(created_at)`);
-        
+        // Notifications
         await client.query(`CREATE INDEX IF NOT EXISTS idx_notifications_user ON "${schemaName}".notifications(user_id)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_notifications_read ON "${schemaName}".notifications(read)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_notifications_priority ON "${schemaName}".notifications(priority)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_notifications_expires ON "${schemaName}".notifications(expires_at)`);
-        
+        // User settings
         await client.query(`CREATE INDEX IF NOT EXISTS idx_user_settings_user ON "${schemaName}".user_settings(user_id)`);
-        
+        // Deleted entities
         await client.query(`CREATE INDEX IF NOT EXISTS idx_deleted_entities_type ON "${schemaName}".deleted_entities(entity_type)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_deleted_entities_date ON "${schemaName}".deleted_entities(deleted_at)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_deleted_entities_user ON "${schemaName}".deleted_entities(deleted_by)`);
-
+        // Webhook accounts
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_webhook_accounts_user ON "${schemaName}".webhook_accounts(user_id)`);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_webhook_accounts_platform ON "${schemaName}".webhook_accounts(platform)`);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_webhook_accounts_active ON "${schemaName}".webhook_accounts(is_active)`);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_webhook_accounts_ai_enabled ON "${schemaName}".webhook_accounts(ai_enabled)`);
+        await client.query(`CREATE INDEX IF NOT EXISTS idx_webhook_accounts_last_sync ON "${schemaName}".webhook_accounts(last_sync)`);
+        // Automation settings
         await client.query(`CREATE INDEX IF NOT EXISTS idx_automation_settings_user ON "${schemaName}".automation_settings(user_id)`);
-
+        // Conversations
         await client.query(`CREATE INDEX IF NOT EXISTS idx_conversations_contact ON "${schemaName}".conversations(contact_id)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_conversations_channel ON "${schemaName}".conversations(channel)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_conversations_status ON "${schemaName}".conversations(statut)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_conversations_interaction ON "${schemaName}".conversations(derniere_interaction)`);
-
+        // Messages
         await client.query(`CREATE INDEX IF NOT EXISTS idx_messages_conversation ON "${schemaName}".messages(conversation_id)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_messages_contact ON "${schemaName}".messages(contact_id)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_messages_type ON "${schemaName}".messages(type)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_messages_date ON "${schemaName}".messages(created_at)`);
-
+    
         await client.query('COMMIT');
-        console.log(`✅ Tables principales créées pour ${schemaName}`);
-
+        console.log(`✅ Tables principales et index créés pour ${schemaName}`);
+    
+        // === TRANSACTION 3 : TABLES SECONDAIRES (webhook_logs et IA) ===
         await client.query('BEGIN');
-
-        await createIATablesForSchema(schemaName);
-
+    
+        // Table webhook_logs (avec clé étrangère vers webhook_accounts)
         await client.query(`
           CREATE TABLE IF NOT EXISTS "${schemaName}".webhook_logs (
             id SERIAL PRIMARY KEY,
@@ -644,106 +638,16 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
           )
         `);
-
-        // 3.9 Table agence_clients
-        await client.query(`
-          CREATE TABLE IF NOT EXISTS "${schemaName}".agence_clients (
-            id SERIAL PRIMARY KEY,
-            client_name VARCHAR(200) NOT NULL,
-            client_email VARCHAR(200) NOT NULL,
-            client_phone VARCHAR(50),
-            company VARCHAR(200),
-            facebook_page JSONB DEFAULT '{}',
-            messenger_status VARCHAR(20) DEFAULT 'pending',
-            last_activity TIMESTAMP,
-            last_message TEXT,
-            monthly_messages INTEGER DEFAULT 0,
-            invitation_token VARCHAR(100),
-            invitation_status VARCHAR(20) DEFAULT 'pending',
-            created_by INTEGER,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-          )
-        `);
-
-        await client.query(`
-          CREATE TABLE IF NOT EXISTS "${schemaName}".agence_invitations (
-            id SERIAL PRIMARY KEY,
-            invitation_token VARCHAR(100) UNIQUE NOT NULL,
-            client_name VARCHAR(200) NOT NULL,
-            client_email VARCHAR(200) NOT NULL,
-            client_phone VARCHAR(50),
-            invitation_method VARCHAR(50) DEFAULT 'email',
-            status VARCHAR(20) DEFAULT 'pending',
-            created_by INTEGER,
-            expires_at TIMESTAMP,
-            metadata JSONB DEFAULT '{}',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-          )
-        `);
-        // Créer la table webhook_logs
-        await pool.query(`
-          CREATE TABLE IF NOT EXISTS ${schemaName}.webhook_logs (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER,
-            account_id INTEGER REFERENCES ${schemaName}.webhook_accounts(id) ON DELETE CASCADE,
-            platform VARCHAR(50) NOT NULL,
-            url TEXT,
-            method VARCHAR(10),
-            status_code INTEGER,
-            headers JSONB,
-            payload JSONB,
-            response JSONB,
-            error TEXT,
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            `);
-        
-
-
         console.log(`✅ Table ${schemaName}.webhook_logs créée`);
-
-        try {
-            const schemaName = `user_${userId}`;
-            await initializeIAForUser(userId, schemaName);
-          } catch (iaError) {
-            console.error('⚠️ Erreur initialisation IA:', iaError.message);
-            // Ne pas bloquer la création des tables
-          }
-
-
-
-        
-
-
-        console.log(`✅ Table ${schemaName}.messages créée`);
-        
-        // ==================== ÉTAPE 4: CRÉATION DES INDEX ====================
-        
-        
-        
-        
-
-        // Index pour les  tables PROFIL
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_webhook_accounts_user ON "${schemaName}".webhook_accounts(user_id)`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_webhook_accounts_platform ON "${schemaName}".webhook_accounts(platform)`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_webhook_accounts_active ON "${schemaName}".webhook_accounts(is_active)`);
-
-        
-
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_webhook_accounts_ai_enabled ON "${schemaName}".webhook_accounts(ai_enabled)`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_webhook_accounts_platform_type ON "${schemaName}".webhook_accounts(platform_type)`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_webhook_accounts_last_sync ON "${schemaName}".webhook_accounts(last_sync)`);
-        await pool.query(`CREATE INDEX IF NOT EXISTS idx_${schemaName}_webhook_logs_account_id ON ${schemaName}.webhook_logs(account_id)`);   
-        await pool.query(`CREATE INDEX IF NOT EXISTS idx_${schemaName}_webhook_logs_timestamp ON ${schemaName}.webhook_logs(timestamp DESC)`);
-        console.log('✅ Tous les index créés');
-        
-        // ==================== ÉTAPE 5: DONNÉES INITIALES ====================
-        
-        console.log('📝 Insertion des données initiales...');
-        
-        // Paramètres utilisateur
+    
+        // Tables IA
+        await createIATablesForSchema(schemaName);  // Assurez-vous que cette fonction utilise des guillemets
+    
+        await client.query('COMMIT');
+        console.log(`✅ Tables secondaires créées pour ${schemaName}`);
+    
+        // === DONNÉES INITIALES (hors transaction) ===
+        // Insertion des données initiales (user_settings, etc.)
         await client.query(`
           INSERT INTO "${schemaName}".user_settings 
           (user_id, preferences, ui_settings, notification_settings, export_settings)
@@ -753,170 +657,17 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
           userId,
           JSON.stringify({}),
           JSON.stringify({}),
-          JSON.stringify({
-            email_notifications: true,
-            push_notifications: true,
-            order_updates: true
-          }),
+          JSON.stringify({ email_notifications: true, push_notifications: true, order_updates: true }),
           JSON.stringify({})
         ]);
-        
         console.log('✅ Données initiales insérées');
-        
-        // ==================== ÉTAPE 6: CRÉATION DES FONCTIONS ET DÉCLENCHEURS ====================
-        
-        console.log('⚙️ Création des fonctions et déclencheurs...');
-        
-        // Fonction pour mettre à jour updated_at
-        await client.query(`
-          CREATE OR REPLACE FUNCTION "${schemaName}".update_updated_at_column()
-          RETURNS TRIGGER AS $$
-          BEGIN
-            NEW.updated_at = CURRENT_TIMESTAMP;
-            RETURN NEW;
-          END;
-          $$ language 'plpgsql'
-        `);
-        
-        // Tables avec updated_at
-        const tablesWithUpdatedAt = [
-          'contacts', 'produits', 'commandes', 'opportunites', 'documents',
-          'user_settings'
-        ];
-        
-        for (const table of tablesWithUpdatedAt) {
-          await client.query(`
-            DROP TRIGGER IF EXISTS update_${table}_updated_at ON "${schemaName}".${table};
-            CREATE TRIGGER update_${table}_updated_at
-            BEFORE UPDATE ON "${schemaName}".${table}
-            FOR EACH ROW
-            EXECUTE FUNCTION "${schemaName}".update_updated_at_column()
-          `);
-        }
-        
-        // Fonction pour nettoyer les anciennes données
-        await client.query(`
-          CREATE OR REPLACE FUNCTION "${schemaName}".cleanup_old_data()
-          RETURNS void AS $$
-          BEGIN
-            -- Entités supprimées vieilles de plus de 30 jours
-            DELETE FROM "${schemaName}".deleted_entities 
-            WHERE deleted_at < CURRENT_TIMESTAMP - INTERVAL '30 days';
-          END;
-          $$ language 'plpgsql'
-        `);
-        
-        // ==================== ÉTAPE 7: CRÉATION DES VUES ====================
-        
-        console.log('📊 Création des vues...');
-        
-        // Vue pour les statistiques
-        await client.query(`
-          CREATE OR REPLACE VIEW "${schemaName}".v_sales_stats AS
-          SELECT 
-            DATE(date) as sale_date,
-            COUNT(*) as total_orders,
-            SUM(total) as total_revenue,
-            AVG(total) as avg_order_value,
-            COUNT(DISTINCT contact_id) as unique_customers
-          FROM "${schemaName}".commandes 
-          WHERE statut = 'livrée'
-            AND date >= CURRENT_DATE - INTERVAL '30 days'
-          GROUP BY DATE(date)
-          ORDER BY sale_date DESC
-        `);
-        
-        // Vue pour les produits populaires
-        await client.query(`
-          CREATE OR REPLACE VIEW "${schemaName}".v_popular_products AS
-          SELECT 
-            p.id,
-            p.nom,
-            p.prix,
-            COALESCE(SUM(lc.quantite), 0) as total_sold,
-            COALESCE(SUM(lc.quantite * p.prix), 0) as total_revenue
-          FROM "${schemaName}".produits p
-          LEFT JOIN "${schemaName}".lignes_commande lc ON p.id = lc.produit_id
-          LEFT JOIN "${schemaName}".commandes c ON lc.commande_id = c.id AND c.statut = 'livrée'
-          GROUP BY p.id, p.nom, p.prix
-          ORDER BY total_sold DESC
-        `);
-        
-        
-
-        // ==================== ÉTAPE 8: CRÉATION DES TABLES IA ====================
-
-        console.log('🤖 Création des tables IA...');
-        try {
-            // Récupérer l'ID utilisateur pour les paramètres par défaut
-            const userId = parseInt(schemaName.replace('user_', ''));
-            
-            // Appeler votre fonction existante
-            await createIATablesForSchema(schemaName);
-            
-            console.log('✅ Tables IA créées avec succès');
-            
-            // Initialiser les paramètres IA
-            await initIADefaultSettings(schemaName, userId);
-            
-        } catch (error) {
-            console.error('⚠️ Erreur création tables IA:', error.message);
-            // Ne pas bloquer la création principale en cas d'erreur IA
-        }
-        
-
-
-        console.log('🤖 Création des tables IA...');
-        try {
-            await createIATablesForSchema(schemaName);
-            console.log('✅ Tables IA créées avec succès');
-        } catch (error) {
-            console.error('⚠️ Erreur création tables IA:', error.message);
-        }
-
-
-
-        console.log(`
-          🎉 CRÉATION DES TABLES TERMINÉE POUR ${schemaName}
-          ========================================================
-          📊 TABLES CRÉÉES:
-            • ERP-CRM: 7 tables
-            • SUPPORT: 8 tables
-            • IA: 4 tables
-            • TOTAL: 19 tables
-            
-          🔧 FONCTIONNALITÉS:
-            • Isolation complète des données
-            • Gestion contacts, produits, commandes
-            • Comptes webhooks avec IA
-            • Intelligence artificielle complète
-            • Conversations et profils clients
-            • Règles métier automatisées
-            
-          ⚙️ OPTIMISATIONS:
-            • Index pour performances
-            • Triggers automatiques
-            • Vues de reporting
-            • Données initiales IA
-          ========================================================
-          `);
-        await client.query('COMMIT');
-        
+    
         return true;
-        
+    
       } catch (error) {
         await client.query('ROLLBACK');
         console.error(`❌ ERREUR CRITIQUE création tables ${schemaName}:`, error);
-        
-        console.error('Détails erreur:', {
-          message: error.message,
-          code: error.code,
-          detail: error.detail,
-          schema: schemaName,
-          userId: userId,
-          stack: error.stack
-        });
-        
+        console.error('Détails:', { message: error.message, code: error.code, schema: schemaName, userId });
         return false;
       } finally {
         client.release();
