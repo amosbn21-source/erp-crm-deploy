@@ -3,24 +3,26 @@ import axios from 'axios';
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 const api = axios.create({
-  baseURL: `${API_BASE}/api`,  // ← ICI le /api est AJOUTÉ UNE SEULE FOIS
+  baseURL: `${API_BASE}/api`,
   headers: { 'Content-Type': 'application/json' },
 });
 
+// Intercepteur pour ajouter le token JWT
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
   return config;
 });
 
+// ========== FONCTIONS DE BASE ==========
 export const get = (url, params) => api.get(url, { params });
 export const post = (url, data) => api.post(url, data);
 export const put = (url, data) => api.put(url, data);
 export const del = (url) => api.delete(url);
 
-// Version "sécurisée" de post avec gestion d'erreur standardisée
-
-// Vous pouvez ajouter aussi secureGet, securePut, secureDelete si besoin
+// ========== VERSIONS SÉCURISÉES (AVEC TRY/CATCH) ==========
 export const secureGet = async (url, params) => {
   try {
     const response = await api.get(url, { params });
@@ -61,8 +63,18 @@ export const secureDelete = async (url) => {
   }
 };
 
-
-
-
+// ========== FONCTION SPÉCIALE POUR UPLOAD DE FICHIERS ==========
+export const secureUpload = async (url, formData, onUploadProgress) => {
+  try {
+    const response = await api.post(url, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress,
+    });
+    return response.data;
+  } catch (error) {
+    console.error(`❌ secureUpload error for ${url}:`, error);
+    throw error;
+  }
+};
 
 export default api;
