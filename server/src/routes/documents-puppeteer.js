@@ -35,7 +35,7 @@ router.use((req, res, next) => {
   next();
 });
 
-// Fonction pour créer les tables de documents si nécessaire (avec pool)
+// Fonction pour créer les tables de documents si nécessaire (accepte un pool)
 async function ensureDocumentTables(schemaName, userId, pool) {
   try {
     // Vérifier si le schéma existe
@@ -119,19 +119,8 @@ async function ensureDocumentTables(schemaName, userId, pool) {
   }
 }
 
-// Fonction d'échappement HTML
-function escapeHtml(text) {
-  if (!text) return '';
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
-
-// HTML simplifié (inchangé)
-function generateSimpleHTML(doc, lignes) {
+// Helper HTML simplifié (inchangé)
+const generateSimpleHTML = (doc, lignes) => {
   const rows = lignes.map(l => {
     const prixUnitaire = Number(l.prix_unitaire) || 0;
     const totalLigne = Number(l.total_ligne) || 0;
@@ -204,21 +193,34 @@ function generateSimpleHTML(doc, lignes) {
   </div>
 </body>
 </html>`;
+};
+
+function escapeHtml(text) {
+  if (!text) return '';
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
-// POST /api/documents-puppeteer/:id/generate-pdf-puppeteer
+// Route de génération PDF
 router.post('/:id/generate-pdf-puppeteer', async (req, res) => {
   const { id } = req.params;
   const schemaName = req.userSchema;
   const userId = req.user?.userId || req.user?.id;
-  const pool = req.app.locals.pool; // Récupération du pool partagé
+  const pool = req.app.locals.pool; // Utiliser le pool partagé
   
   console.log(`📄 Génération PDF pour document #${id}`);
   
-  const client = await pool.connect();
+  let client;
   let browser = null;
   
   try {
+    // Acquérir un client du pool partagé
+    client = await pool.connect();
+    
     // Assurer que les tables existent
     await ensureDocumentTables(schemaName, userId, pool);
     
@@ -246,14 +248,18 @@ router.post('/:id/generate-pdf-puppeteer', async (req, res) => {
     
     const lignes = lignesRes.rows;
     
-    // Générer le HTML simplifié
+    // Libérer le client avant de lancer Puppeteer (pour éviter de bloquer)
+    client.release();
+    client = null;
+    
+    // Générer le HTML
     const html = generateSimpleHTML(doc, lignes);
     
     // Générer le PDF
     const filename = `${doc.type || 'document'}_${doc.reference || id}_${Date.now()}.pdf`;
     const outPath = path.join(UPLOADS_PATH, filename);
     
-    console.log(`📄 Lancement Puppeteer avec timeout augmenté...`);
+    console.log(`📄 Lancement Puppeteer...`);
     
     browser = await puppeteer.launch({
       executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
@@ -270,6 +276,7 @@ router.post('/:id/generate-pdf-puppeteer', async (req, res) => {
     
     const page = await browser.newPage();
     
+    // Désactiver les ressources inutiles
     await page.setRequestInterception(true);
     page.on('request', (req) => {
       if (['image', 'stylesheet', 'font'].includes(req.resourceType())) {
@@ -300,7 +307,9 @@ router.post('/:id/generate-pdf-puppeteer', async (req, res) => {
     await browser.close();
     browser = null;
     
-    // Mettre à jour le document
+    // Réacquérir un client pour mettre à jour le document
+    client = await pool.connect();
+    
     await client.query(
       `UPDATE "${schemaName}".documents 
        SET pdf_filename = $1, updated_at = CURRENT_TIMESTAMP 
@@ -320,10 +329,13 @@ router.post('/:id/generate-pdf-puppeteer', async (req, res) => {
     });
     
   } catch (err) {
+    // Nettoyage
     if (browser) {
-      try { await browser.close(); } catch (closeErr) {}
+      try { await browser.close(); } catch (closeErr) { console.error('❌ Erreur fermeture browser:', closeErr); }
     }
-    if (client) client.release();
+    if (client) {
+      try { client.release(); } catch (releaseErr) { console.error('❌ Erreur libération client:', releaseErr); }
+    }
     
     console.error('❌ Erreur génération PDF:', err.message);
     
