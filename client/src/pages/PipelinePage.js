@@ -61,7 +61,7 @@ export default function PipelinePage({ contact, onClose }) {
   const ajouterOpportunite = async () => {
     if (!titre || !montant) return;
     try {
-      await securePost(`/api/contacts/${contact.id}/opportunites`, {
+      await securePost(`/contacts/${contact.id}/opportunites`, {
         titre,
         montant,
         etape: etapeForm,
@@ -116,7 +116,7 @@ export default function PipelinePage({ contact, onClose }) {
     );
 
     try {
-      await securePut(`/api/opportunites/${op.id}`, {
+      await securePut(`/opportunites/${op.id}`, {
         etape: destination.droppableId,
       });
     } catch (err) {
