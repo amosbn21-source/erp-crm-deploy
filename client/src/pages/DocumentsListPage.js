@@ -123,7 +123,7 @@ export default function DocumentsListPage() {
   // Fonction pour générer un PDF
   const handleGeneratePDF = async (documentId) => {
     try {
-      const res = await securePost(`/api/documents-puppeteer/${documentId}/generate-pdf-puppeteer`);
+      const res = await securePost(`/documents-puppeteer/${documentId}/generate-pdf-puppeteer`);
       
       if (res.data && res.data.pdfUrl) {
         // Ouvrir le PDF dans un nouvel onglet
