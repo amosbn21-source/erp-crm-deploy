@@ -43,7 +43,7 @@ export default function PipelinePage({ contact, onClose }) {
   // 🔄 Fonction pour charger les opportunités d’un contact
   const fetchOpportunites = useCallback(async (contactId) => {
     try {
-      const res = await secureGet(`/api/contacts/${contactId}/opportunites`);
+      const res = await secureGet(`/contacts/${contactId}/opportunites`);
       setOpportunites(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error('Erreur fetchOpportunites', err);
