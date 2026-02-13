@@ -1,6 +1,7 @@
 // server.js - VERSION SIMPLIFIÉE AVEC ISOLATION DES DONNÉES
 require('dotenv').config();
 const express = require('express');
+const pool = require('./src/db');
 const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
@@ -14,14 +15,15 @@ const iaWebhooksRoutes = require('./src/routes/ia-webhooks');
 const debugRoutes = require('./debug-webhook');
 
 const WebSocket = require('ws');
-const pool = require('./src/db');
-app.locals.pool = pool;
+
+
 const wss = new WebSocket.Server({ noServer: true });
 
 
 
 // ==================== CONFIGURATION ====================
 const app = express();
+app.locals.pool = pool;
 const PORT = process.env.PORT || 5000;
 const UPLOADS_PATH = path.join(__dirname, 'uploads');
 
