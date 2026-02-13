@@ -1,18 +1,15 @@
-// routes/commandes.js - VERSION AVEC ISOLATION DES DONNÉES
+// routes/commandes.js - VERSION CORRIGÉE
 const express = require('express');
 const router = express.Router();
-//const { pool } = require('../../server'); 
-
-
+const pool = require('../db'); // Import du pool global
 
 // ==================== FONCTIONS UTILITAIRES ====================
 
-
-// Fonction pour corriger les tables existantes
-async function fixExistingTables(schemaName) {
+// Fonction pour corriger les tables existantes (accepte le pool)
+async function fixExistingTables(schemaName, poolInstance) {
   try {
     // Vérifier si la colonne numero_commande existe
-    const columnCheck = await db.query(`
+    const columnCheck = await poolInstance.query(`
       SELECT EXISTS (
         SELECT FROM information_schema.columns 
         WHERE table_schema = $1 
@@ -23,7 +20,7 @@ async function fixExistingTables(schemaName) {
     
     if (columnCheck.rows[0].exists) {
       // Vérifier s'il y a des valeurs NULL dans numero_commande
-      const nullCheck = await db.query(`
+      const nullCheck = await poolInstance.query(`
         SELECT COUNT(*) as null_count 
         FROM "${schemaName}".commandes 
         WHERE numero_commande IS NULL
@@ -33,7 +30,7 @@ async function fixExistingTables(schemaName) {
         console.log(`🔄 Correction des ${nullCheck.rows[0].null_count} commandes sans numéro dans ${schemaName}...`);
         
         // Générer des numéros uniques pour chaque commande
-        const commandesSansNumero = await db.query(`
+        const commandesSansNumero = await poolInstance.query(`
           SELECT id, created_at FROM "${schemaName}".commandes 
           WHERE numero_commande IS NULL 
           ORDER BY id
@@ -44,10 +41,9 @@ async function fixExistingTables(schemaName) {
           const year = date.getFullYear();
           const month = String(date.getMonth() + 1).padStart(2, '0');
           
-          // Utiliser l'ID comme séquence pour éviter les doublons
           const numeroCommande = `CMD-${year}${month}-${String(cmd.id).padStart(5, '0')}`;
           
-          await pool.query(
+          await poolInstance.query(
             `UPDATE "${schemaName}".commandes 
              SET numero_commande = $1 
              WHERE id = $2`,
@@ -63,11 +59,11 @@ async function fixExistingTables(schemaName) {
   }
 }
 
-// Fonction pour créer les tables si nécessaire
-async function ensureUserTables(schemaName, userId) {
+// Fonction pour créer les tables si nécessaire (accepte le pool)
+async function ensureUserTables(schemaName, userId, poolInstance) {
   try {
     // Vérifier si le schéma existe
-    const schemaExists = await db.query(`
+    const schemaExists = await poolInstance.query(`
       SELECT EXISTS (
         SELECT FROM information_schema.schemata 
         WHERE schema_name = $1
@@ -76,7 +72,7 @@ async function ensureUserTables(schemaName, userId) {
     
     if (!schemaExists.rows[0].exists) {
       console.log(`📋 Schéma ${schemaName} non trouvé, création complète...`);
-      await createUserTables(userId);
+      await createUserTables(userId, poolInstance);
       return;
     }
     
@@ -84,7 +80,7 @@ async function ensureUserTables(schemaName, userId) {
     const requiredTables = ['contacts', 'produits', 'commandes', 'commande_produits'];
     
     for (const tableName of requiredTables) {
-      const tableExists = await db.query(`
+      const tableExists = await poolInstance.query(`
         SELECT EXISTS (
           SELECT FROM information_schema.tables 
           WHERE table_schema = $1 
@@ -94,7 +90,7 @@ async function ensureUserTables(schemaName, userId) {
       
       if (!tableExists.rows[0].exists) {
         console.log(`📋 Table ${tableName} non trouvée dans ${schemaName}, création complète...`);
-        await createUserTables(userId);
+        await createUserTables(userId, poolInstance);
         return;
       }
     }
@@ -106,18 +102,18 @@ async function ensureUserTables(schemaName, userId) {
   }
 }
 
-// Fonction pour créer toutes les tables utilisateur
-async function createUserTables(userId) {
+// Fonction pour créer toutes les tables utilisateur (accepte le pool)
+async function createUserTables(userId, poolInstance) {
   const schemaName = `user_${userId}`;
   
   console.log(`🔧 Création COMPLÈTE des tables pour: ${schemaName}`);
   
   try {
     // 1. Créer le schéma
-    await db.query(`CREATE SCHEMA IF NOT EXISTS "${schemaName}"`);
+    await poolInstance.query(`CREATE SCHEMA IF NOT EXISTS "${schemaName}"`);
     
     // 2. Table contacts
-    await db.query(`
+    await poolInstance.query(`
       CREATE TABLE IF NOT EXISTS "${schemaName}".contacts (
         id SERIAL PRIMARY KEY,
         nom VARCHAR(100) NOT NULL,
@@ -138,7 +134,7 @@ async function createUserTables(userId) {
     `);
     
     // 3. Table produits
-    await db.query(`
+    await poolInstance.query(`
       CREATE TABLE IF NOT EXISTS "${schemaName}".produits (
         id SERIAL PRIMARY KEY,
         nom VARCHAR(200) NOT NULL,
@@ -154,7 +150,7 @@ async function createUserTables(userId) {
     `);
     
     // 4. Table commandes - AVEC NUMÉRO DE COMMANDE
-    await db.query(`
+    await poolInstance.query(`
       CREATE TABLE IF NOT EXISTS "${schemaName}".commandes (
         id SERIAL PRIMARY KEY,
         numero_commande VARCHAR(50) UNIQUE NOT NULL,
@@ -170,7 +166,7 @@ async function createUserTables(userId) {
     `);
     
     // 5. Table commande_produits
-    await db.query(`
+    await poolInstance.query(`
       CREATE TABLE IF NOT EXISTS "${schemaName}".commande_produits (
         id SERIAL PRIMARY KEY,
         commande_id INTEGER REFERENCES "${schemaName}".commandes(id) ON DELETE CASCADE,
@@ -198,7 +194,7 @@ async function generateUniqueNumeroCommande(schemaName) {
   
   try {
     // Récupérer le dernier numéro pour ce mois
-    const lastCommande = await db.query(`
+    const lastCommande = await pool.query(`
       SELECT numero_commande 
       FROM "${schemaName}".commandes 
       WHERE numero_commande LIKE $1 
@@ -220,7 +216,7 @@ async function generateUniqueNumeroCommande(schemaName) {
       }
     }
     
-    // Formater : CMD-YYYYMM-XXXXX (5 chiffres)
+    // Formatter : CMD-YYYYMM-XXXXX (5 chiffres)
     return `CMD-${year}${month}-${String(nextNumber).padStart(5, '0')}`;
     
   } catch (error) {
@@ -242,8 +238,8 @@ async function notifyMessenger(compte, message) {
 }
 
 // Fonction helper pour récupérer une commande avec ses produits
-async function getCommandeAvecProduits(commandeId, schemaName) {
-  const result = await req.app.locals.pool.query(
+async function getCommandeAvecProduits(commandeId, schemaName, poolInstance) {
+  const result = await poolInstance.query(
     `SELECT 
       c.*,
       ct.nom AS "contact_nom",
@@ -284,24 +280,23 @@ router.use(async (req, res, next) => {
   
   if (!req.userSchema) {
     console.warn('⚠️  Aucun schéma utilisateur défini dans commandes.js');
-    // Pour les utilisateurs non-admin, forcer le schéma user_{id}
     if (req.user?.role !== 'admin') {
       const userId = req.user?.userId || req.user?.id;
       if (userId) {
         req.userSchema = `user_${userId}`;
       } else {
-        req.userSchema = 'public'; // Fallback
+        req.userSchema = 'public';
       }
     } else {
-      req.userSchema = 'public'; // Admin peut voir public
+      req.userSchema = 'public';
     }
   }
   
   console.log(`✅ commandes.js utilisera le schéma: ${req.userSchema}`);
   
-  // Corriger les tables existantes si nécessaire
+  // Corriger les tables existantes si nécessaire (passer req.app.locals.pool)
   if (req.userSchema && req.userSchema.startsWith('user_')) {
-    await fixExistingTables(req.userSchema);
+    await fixExistingTables(req.userSchema, req.app.locals.pool);
   }
   
   next();
@@ -313,12 +308,11 @@ router.use(async (req, res, next) => {
 router.get('/', async (req, res) => {
   try {
     const schemaName = req.userSchema;
-    const db = req.app.locals.pool; // ← récupération du pool
+    const db = req.app.locals.pool;
     
     console.log(`🔍 Début GET /api/commandes pour schéma: ${schemaName}`);
     
-    // Assurer que les tables existent
-    await ensureUserTables(schemaName, req.user?.id, req.app.locals.pool);
+    await ensureUserTables(schemaName, req.user?.id, db);
     
     const result = await db.query(`
       SELECT 
@@ -344,7 +338,6 @@ router.get('/', async (req, res) => {
     console.log(`📊 ${result.rows.length} commande(s) trouvée(s) dans ${schemaName}`);
     const commandes = result.rows;
 
-    // Pour chaque commande, récupère ses lignes produit
     for (const cmd of commandes) {
       const produitsRes = await db.query(
         `SELECT 
@@ -365,7 +358,6 @@ router.get('/', async (req, res) => {
 
       cmd.produits = produitsRes.rows || [];
       
-      // Si total_ht n'est pas déjà calculé, le calculer
       if (!cmd.total_ht && cmd.produits.length > 0) {
         const totalHT = cmd.produits.reduce((sum, p) => sum + (p.sousTotal || 0), 0);
         const tva = totalHT * 0.20;
@@ -397,13 +389,12 @@ router.get('/', async (req, res) => {
 router.get('/stats', async (req, res) => {
   try {
     const schemaName = req.userSchema;
-    const db = req.app.locals.pool; 
+    const db = req.app.locals.pool;
     
     console.log(`📊 GET /api/commandes/stats pour schéma: ${schemaName}`);
     
-    await ensureUserTables(schemaName, req.user?.id, req.app.locals.pool);
+    await ensureUserTables(schemaName, req.user?.id, db);
     
-    // Statistiques générales
     const stats = await db.query(`
       SELECT 
         COUNT(*) as total_commandes,
@@ -418,7 +409,6 @@ router.get('/stats', async (req, res) => {
       FROM "${schemaName}".commandes
     `);
     
-    // Top produits
     const topProduits = await db.query(`
       SELECT 
         p.id,
@@ -433,7 +423,6 @@ router.get('/stats', async (req, res) => {
       LIMIT 10
     `);
     
-    // Évolution mensuelle
     const evolution = await db.query(`
       SELECT 
         DATE_TRUNC('month', date) as mois,
@@ -448,7 +437,6 @@ router.get('/stats', async (req, res) => {
       LIMIT 12
     `);
     
-    // Top clients
     const topClients = await db.query(`
       SELECT 
         c.id,
@@ -466,7 +454,6 @@ router.get('/stats', async (req, res) => {
       LIMIT 10
     `);
     
-    // Produits en rupture de stock
     const ruptureStock = await db.query(`
       SELECT 
         id,
@@ -506,14 +493,12 @@ router.get('/stats', async (req, res) => {
 router.get('/recentes', async (req, res) => {
   try {
     const schemaName = req.userSchema;
-    const db = req.app.locals.pool; 
+    const db = req.app.locals.pool;
     console.log(`📊 GET /api/commandes/recentes pour schéma: ${schemaName}`);
     
-    // Assurer que les tables existent
-    await ensureUserTables(schemaName, req.user?.id, req.app.locals.pool);
+    await ensureUserTables(schemaName, req.user?.id, db);
     
-    // Récupérer les 10 commandes les plus récentes
-    const result = db.query(`
+    const result = await db.query(`
       SELECT 
         c.id, 
         c.numero_commande,
@@ -537,9 +522,8 @@ router.get('/recentes', async (req, res) => {
     
     console.log(`📊 ${result.rows.length} commande(s) récente(s) trouvée(s) dans ${schemaName}`);
     
-    // Pour chaque commande, récupère ses lignes produit
     for (const cmd of result.rows) {
-      const produitsRes = db.query(
+      const produitsRes = await db.query(
         `SELECT 
            cp.id,
            cp.commande_id,
@@ -580,14 +564,13 @@ router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const schemaName = req.userSchema;
-    const db = req.app.locals.pool; 
+    const db = req.app.locals.pool;
     
     console.log(`🔍 GET /api/commandes/${id} pour schéma: ${schemaName}`);
     
-    // Assurer que les tables existent
-    await ensureUserTables(schemaName, req.user?.id, req.app.locals.pool);
+    await ensureUserTables(schemaName, req.user?.id, db);
     
-    const commande = await getCommandeAvecProduits(id, schemaName);
+    const commande = await getCommandeAvecProduits(id, schemaName, db);
     
     if (!commande) {
       return res.status(404).json({
@@ -615,11 +598,10 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   const { date, statut, total, contactId, produits } = req.body;
   const schemaName = req.userSchema;
-  const db = req.app.locals.pool; 
+  const db = req.app.locals.pool;
   
   console.log(`📝 Création commande dans schéma: ${schemaName}`);
   
-  // Calculer totalHT et TVA
   const totalProduits = (produits || []).reduce((sum, p) => 
     sum + (p.quantite * p.prixUnitaire), 0
   );
@@ -627,7 +609,6 @@ router.post('/', async (req, res) => {
   const tva = totalProduits * 0.20;
   const totalTTC = totalHT + tva;
   
-  // Validation de la date
   if (new Date(date) > new Date()) {
     return res.status(400).json({ 
       success: false,
@@ -635,15 +616,13 @@ router.post('/', async (req, res) => {
     });
   }
   
-  // Assurer que les tables existent
-  await ensureUserTables(schemaName, req.user?.id, req.app.locals.pool);
+  await ensureUserTables(schemaName, req.user?.id, db);
   
   const client = await db.connect();
   
   try {
     await client.query('BEGIN');
     
-    // 1. Vérifier les stocks avant de créer la commande
     for (const produit of (produits || [])) {
       const checkStock = await client.query(
         `SELECT stock, nom FROM "${schemaName}".produits WHERE id = $1`,
@@ -660,11 +639,9 @@ router.post('/', async (req, res) => {
       }
     }
     
-    // 2. Générer un numéro de commande unique
     const numeroCommande = await generateUniqueNumeroCommande(schemaName);
     console.log(`🔢 Numéro de commande généré: ${numeroCommande}`);
     
-    // 3. Créer la commande avec le numéro généré
     const commandeResult = await client.query(
       `INSERT INTO "${schemaName}".commandes 
        (numero_commande, date, statut, total, total_ht, tva, contact_id, created_at, updated_at)
@@ -675,10 +652,8 @@ router.post('/', async (req, res) => {
     
     const commandeId = commandeResult.rows[0].id;
     
-    // 4. Ajouter les produits à la commande
     if (produits && Array.isArray(produits)) {
       for (const produit of produits) {
-        // Ajouter à commande_produits
         await client.query(
           `INSERT INTO "${schemaName}".commande_produits 
            (commande_id, produit_id, quantite, prix_unitaire, created_at)
@@ -686,7 +661,6 @@ router.post('/', async (req, res) => {
           [commandeId, produit.produitId, produit.quantite, produit.prixUnitaire]
         );
         
-        // Mettre à jour le stock
         await client.query(
           `UPDATE "${schemaName}".produits 
            SET stock = stock - $1, 
@@ -699,8 +673,7 @@ router.post('/', async (req, res) => {
     
     await client.query('COMMIT');
     
-    // 5. Récupérer la commande complète avec produits
-    const commandeComplete = await getCommandeAvecProduits(commandeId, schemaName);
+    const commandeComplete = await getCommandeAvecProduits(commandeId, schemaName, db);
     
     res.status(201).json({
       success: true,
@@ -719,7 +692,6 @@ router.post('/', async (req, res) => {
         details: err.message 
       });
     } else if (err.message.includes('numero_commande') && err.message.includes('unique')) {
-      // En cas de collision, on retente une fois
       try {
         const numeroCommandeRetry = await generateUniqueNumeroCommande(schemaName);
         console.log(`🔄 Retry avec numéro: ${numeroCommandeRetry}`);
@@ -753,12 +725,11 @@ router.put('/:id', async (req, res) => {
   const { id } = req.params;
   const { date, statut, contactId, produits } = req.body;
   const schemaName = req.userSchema;
-  const db = req.app.locals.pool; 
+  const db = req.app.locals.pool;
   
   console.log(`✏️ PUT /api/commandes/${id} pour schéma: ${schemaName}`);
   console.log('📦 Données reçues:', { date, statut, contactId, produits: produits?.length });
   
-  // Validation de la date
   if (date && new Date(date) > new Date()) {
     return res.status(400).json({ 
       success: false,
@@ -766,15 +737,13 @@ router.put('/:id', async (req, res) => {
     });
   }
   
-  // Assurer que les tables existent
-  await ensureUserTables(schemaName, req.user?.id, req.app.locals.pool);
+  await ensureUserTables(schemaName, req.user?.id, db);
   
   const client = await db.connect();
   
   try {
     await client.query('BEGIN');
     
-    // 1. Vérifier si la commande existe
     const commandeExistante = await client.query(
       `SELECT statut, contact_id FROM "${schemaName}".commandes WHERE id = $1`,
       [id]
@@ -790,7 +759,6 @@ router.put('/:id', async (req, res) => {
     
     const ancienStatut = commandeExistante.rows[0].statut;
     
-    // 2. Si la commande est déjà livrée, on ne peut pas la modifier
     if (ancienStatut === 'livrée') {
       await client.query('ROLLBACK');
       return res.status(400).json({ 
@@ -799,7 +767,6 @@ router.put('/:id', async (req, res) => {
       });
     }
     
-    // 3. Calculer les totaux si produits fournis
     let totalTTC = 0;
     let totalHT = 0;
     let tva = 0;
@@ -810,7 +777,6 @@ router.put('/:id', async (req, res) => {
       totalTTC = totalHT + tva;
     }
     
-    // 4. Mettre à jour la commande
     const commandeResult = await client.query(
       `UPDATE "${schemaName}".commandes
        SET date = COALESCE($1, date),
@@ -833,15 +799,12 @@ router.put('/:id', async (req, res) => {
       ]
     );
     
-    // 5. Gestion des produits si fournis
     if (produits && Array.isArray(produits)) {
-      // a. Récupérer les anciens produits pour restaurer le stock
       const anciensProduits = await client.query(
         `SELECT produit_id, quantite FROM "${schemaName}".commande_produits WHERE commande_id = $1`,
         [id]
       );
       
-      // b. Restaurer les stocks des anciens produits
       for (const ancien of anciensProduits.rows) {
         await client.query(
           `UPDATE "${schemaName}".produits 
@@ -851,10 +814,8 @@ router.put('/:id', async (req, res) => {
         );
       }
       
-      // c. Supprimer les anciennes relations
       await client.query(`DELETE FROM "${schemaName}".commande_produits WHERE commande_id = $1`, [id]);
       
-      // d. Vérifier les stocks pour les nouveaux produits
       for (const produit of produits) {
         const checkStock = await client.query(
           `SELECT stock, nom FROM "${schemaName}".produits WHERE id = $1`,
@@ -873,7 +834,6 @@ router.put('/:id', async (req, res) => {
         }
       }
       
-      // e. Ajouter les nouveaux produits et déduire du stock
       for (const produit of produits) {
         await client.query(
           `INSERT INTO "${schemaName}".commande_produits 
@@ -893,8 +853,7 @@ router.put('/:id', async (req, res) => {
     
     await client.query('COMMIT');
     
-    // 6. Récupérer la commande complète mise à jour
-    const commandeComplete = await getCommandeAvecProduits(id, schemaName);
+    const commandeComplete = await getCommandeAvecProduits(id, schemaName, db);
     
     res.json({
       success: true,
@@ -934,7 +893,7 @@ router.patch('/:id', async (req, res) => {
   const { id } = req.params;
   const { statut } = req.body;
   const schemaName = req.userSchema;
-  const db = req.app.locals.pool; 
+  const db = req.app.locals.pool;
   
   console.log(`🔄 PATCH /api/commandes/${id} pour schéma: ${schemaName}`);
   console.log('📦 Nouveau statut:', statut);
@@ -946,7 +905,6 @@ router.patch('/:id', async (req, res) => {
     });
   }
   
-  // Liste des statuts valides
   const statutsValides = ['en attente', 'en cours', 'livrée', 'annulée'];
   if (!statutsValides.includes(statut)) {
     return res.status(400).json({
@@ -955,15 +913,13 @@ router.patch('/:id', async (req, res) => {
     });
   }
   
-  // Assurer que les tables existent
-  await ensureUserTables(schemaName, req.user?.id, req.app.locals.pool);
+  await ensureUserTables(schemaName, req.user?.id, db);
   
   const client = await db.connect();
   
   try {
     await client.query('BEGIN');
     
-    // 1. Vérifier si la commande existe
     const commandeExistante = await client.query(
       `SELECT statut FROM "${schemaName}".commandes WHERE id = $1`,
       [id]
@@ -979,7 +935,6 @@ router.patch('/:id', async (req, res) => {
     
     const ancienStatut = commandeExistante.rows[0].statut;
     
-    // 2. Logique métier pour les changements de statut
     if (ancienStatut === 'livrée' && statut !== 'livrée') {
       await client.query('ROLLBACK');
       return res.status(400).json({
@@ -996,7 +951,6 @@ router.patch('/:id', async (req, res) => {
       });
     }
     
-    // 3. Mettre à jour le statut
     const result = await client.query(
       `UPDATE "${schemaName}".commandes 
        SET statut = $1, updated_at = CURRENT_TIMESTAMP 
@@ -1005,7 +959,6 @@ router.patch('/:id', async (req, res) => {
       [statut, id]
     );
     
-    // 4. Si on annule une commande non-annulée, restaurer le stock
     if (statut === 'annulée' && ancienStatut !== 'annulée') {
       const produitsCommande = await client.query(
         `SELECT produit_id, quantite FROM "${schemaName}".commande_produits WHERE commande_id = $1`,
@@ -1024,14 +977,12 @@ router.patch('/:id', async (req, res) => {
       console.log(`📦 Stock restauré pour commande ${id} (annulation)`);
     }
     
-    // 5. Si on passe de annulée à autre chose, déduire à nouveau le stock
     if (ancienStatut === 'annulée' && statut !== 'annulée') {
       const produitsCommande = await client.query(
         `SELECT produit_id, quantite FROM "${schemaName}".commande_produits WHERE commande_id = $1`,
         [id]
       );
       
-      // Vérifier les stocks avant de déduire
       for (const produit of produitsCommande.rows) {
         const checkStock = await client.query(
           `SELECT stock, nom FROM "${schemaName}".produits WHERE id = $1`,
@@ -1048,7 +999,6 @@ router.patch('/:id', async (req, res) => {
         }
       }
       
-      // Déduire le stock
       for (const produit of produitsCommande.rows) {
         await client.query(
           `UPDATE "${schemaName}".produits 
@@ -1063,13 +1013,10 @@ router.patch('/:id', async (req, res) => {
     
     await client.query('COMMIT');
     
-    // 6. Récupérer la commande mise à jour
-    const commandeComplete = await getCommandeAvecProduits(id, schemaName);
+    const commandeComplete = await getCommandeAvecProduits(id, schemaName, db);
     
-    // 7. Notifications (simulées)
     if (statut === 'livrée') {
-      // Récupérer les infos du contact pour notification
-      const contactInfo = await client.query(
+      const contactInfo = await db.query(
         `SELECT telephone, compte FROM "${schemaName}".contacts 
          WHERE id = (SELECT contact_id FROM "${schemaName}".commandes WHERE id = $1)`,
         [id]
@@ -1121,19 +1068,17 @@ router.patch('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
   const schemaName = req.userSchema;
-  const db = req.app.locals.pool; 
+  const db = req.app.locals.pool;
   
   console.log(`🗑️ DELETE /api/commandes/${id} pour schéma: ${schemaName}`);
   
-  // Assurer que les tables existent
-  await ensureUserTables(schemaName, req.user?.id, req.app.locals.pool);
+  await ensureUserTables(schemaName, req.user?.id, db);
   
   const client = await db.connect();
   
   try {
     await client.query('BEGIN');
     
-    // 1. Vérifier si la commande existe
     const commandeExistante = await client.query(
       `SELECT statut, numero_commande FROM "${schemaName}".commandes WHERE id = $1`,
       [id]
@@ -1150,7 +1095,6 @@ router.delete('/:id', async (req, res) => {
     const numeroCommande = commandeExistante.rows[0].numero_commande;
     const statut = commandeExistante.rows[0].statut;
     
-    // 2. Logique métier pour la suppression
     if (statut === 'livrée') {
       await client.query('ROLLBACK');
       return res.status(400).json({
@@ -1159,7 +1103,6 @@ router.delete('/:id', async (req, res) => {
       });
     }
     
-    // 3. Restaurer le stock si la commande n'est pas annulée
     if (statut !== 'annulée') {
       const produitsCommande = await client.query(
         `SELECT produit_id, quantite FROM "${schemaName}".commande_produits WHERE commande_id = $1`,
@@ -1178,10 +1121,7 @@ router.delete('/:id', async (req, res) => {
       console.log(`📦 Stock restauré pour suppression commande ${numeroCommande}`);
     }
     
-    // 4. Supprimer les produits associés
     await client.query(`DELETE FROM "${schemaName}".commande_produits WHERE commande_id = $1`, [id]);
-    
-    // 5. Supprimer la commande
     await client.query(`DELETE FROM "${schemaName}".commandes WHERE id = $1`, [id]);
     
     await client.query('COMMIT');
@@ -1209,14 +1149,10 @@ router.delete('/:id', async (req, res) => {
 
 // POST: annuler une commande (alias pour PATCH avec statut annulée)
 router.post('/:id/annuler', async (req, res) => {
-  // Redirige vers PATCH avec statut annulée
   req.body = { statut: 'annulée' };
-  
-  // Stocker l'ID original pour le logging
   const originalId = req.params.id;
   console.log(`⏹️ POST /api/commandes/${originalId}/annuler - Redirection vers PATCH`);
   
-  // Appeler le handler PATCH directement
   const patchHandler = router.stack.find(layer => 
     layer.route && layer.route.path === '/:id' && layer.route.methods.patch
   );
@@ -1224,7 +1160,6 @@ router.post('/:id/annuler', async (req, res) => {
   if (patchHandler && patchHandler.route.stack && patchHandler.route.stack[0]) {
     return patchHandler.route.stack[0].handle(req, res);
   } else {
-    // Fallback si on ne trouve pas le handler PATCH
     req.body = { statut: 'annulée' };
     return router.patch('/:id', req, res);
   }
@@ -1235,13 +1170,12 @@ router.get('/:id/check-stock', async (req, res) => {
   try {
     const { id } = req.params;
     const schemaName = req.userSchema;
-    const db = req.app.locals.pool; 
+    const db = req.app.locals.pool;
     
     console.log(`📦 GET /api/commandes/${id}/check-stock pour schéma: ${schemaName}`);
     
-    await ensureUserTables(schemaName, req.user?.id, req.app.locals.pool);
+    await ensureUserTables(schemaName, req.user?.id, db);
     
-    // Récupérer les produits de la commande
     const produitsCommande = await db.query(`
       SELECT 
         cp.produit_id,
@@ -1254,7 +1188,6 @@ router.get('/:id/check-stock', async (req, res) => {
       WHERE cp.commande_id = $1
     `, [id]);
     
-    // Vérifier les stocks
     const produitsEnRupture = produitsCommande.rows.filter(p => p.stock_actuel < p.quantite_commandee);
     const produitsFaibleStock = produitsCommande.rows.filter(p => 
       p.stock_actuel >= p.quantite_commandee && (p.stock_actuel - p.quantite_commandee) <= 5
