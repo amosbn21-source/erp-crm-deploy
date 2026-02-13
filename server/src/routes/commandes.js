@@ -1,7 +1,7 @@
 // routes/commandes.js - VERSION AVEC ISOLATION DES DONNÉES
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const { pool } = require('../server');
 
 // Utilisez le même pool que dans server.js
 const pool = new Pool({
