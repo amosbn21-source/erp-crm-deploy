@@ -1512,7 +1512,7 @@ export default function ProfilePage() {
   const verifyFacebookWebhook = async (accountId, verifyToken) => {
     try {
       setLoading(true);
-      const response = await securePost(`/api/webhook-accounts/${accountId}/verify-facebook`, {
+      const response = await securePost(`/webhook-accounts/${accountId}/verify-facebook`, {
         verify_token: verifyToken,
         mode: 'subscribe'
       });
@@ -1544,7 +1544,7 @@ export default function ProfilePage() {
   const setupFacebookWebhook = async (accountId) => {
     try {
       setLoading(true);
-      const response = await securePost(`/api/webhook-accounts/${accountId}/setup-facebook`, {
+      const response = await securePost(`/webhook-accounts/${accountId}/setup-facebook`, {
         webhook_url: `${window.location.origin}/api/webhook/messenger/${user?.id}/${accountId}`,
         verify_token: newAccount.verify_token,
         fields: newAccount.webhook_fields
@@ -1565,7 +1565,7 @@ export default function ProfilePage() {
   const syncFacebookSubscriptions = async (accountId) => {
     try {
       setLoading(true);
-      const response = await securePost(`/api/webhook-accounts/${accountId}/sync-subscriptions`, {});
+      const response = await securePost(`/webhook-accounts/${accountId}/sync-subscriptions`, {});
       
       if (response.data && response.data.success) {
         enqueueSnackbar('Abonnements Facebook synchronisés', { variant: 'success' });
@@ -1958,7 +1958,7 @@ export default function ProfilePage() {
     
     try {
       setLoading(true);
-      await secureDelete(`/api/webhook-accounts/${id}`);
+      await secureDelete(`/webhook-accounts/${id}`);
       
       const currentAccounts = Array.isArray(webhookAccounts) ? webhookAccounts : [];
       setWebhookAccounts(currentAccounts.filter(account => account && account.id !== id));
@@ -2041,7 +2041,7 @@ export default function ProfilePage() {
   const handleTestWebhookAccount = async (accountId) => {
     try {
       setLoading(true);
-      const response = await securePost(`/api/webhook-accounts/${accountId}/test`, {});
+      const response = await securePost(`/webhook-accounts/${accountId}/test`, {});
       
       if (response.data.success) {
         enqueueSnackbar('Test de connexion réussi', { variant: 'success' });
@@ -2058,7 +2058,7 @@ export default function ProfilePage() {
 
   const handleToggleAccountAI = async (accountId, enabled) => {
     try {
-      const response = await securePut(`/api/webhook-accounts/${accountId}/ai-settings`, {
+      const response = await securePut(`/webhook-accounts/${accountId}/ai-settings`, {
         ai_enabled: enabled,
         auto_reply: enabled // Active aussi la réponse automatique
       });
@@ -2250,7 +2250,7 @@ export default function ProfilePage() {
       
       if (response.data?.requires_reconnect) {
         // Lancer OAuth pour ce compte spécifique
-        const repairResponse = await securePost(`/api/webhook-accounts/${accountId}/repair-via-oauth`, {});
+        const repairResponse = await securePost(`/webhook-accounts/${accountId}/repair-via-oauth`, {});
         
         if (repairResponse.data?.oauth_url) {
           // Ouvrir la fenêtre OAuth
