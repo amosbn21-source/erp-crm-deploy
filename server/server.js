@@ -1,6 +1,7 @@
 // server.js - VERSION SIMPLIFIÉE AVEC ISOLATION DES DONNÉES
 require('dotenv').config();
 const express = require('express');
+const app = express();
 const pool = require('./src/db');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -22,7 +23,7 @@ const wss = new WebSocket.Server({ noServer: true });
 
 
 // ==================== CONFIGURATION ====================
-const app = express();
+
 app.locals.pool = pool;
 const PORT = process.env.PORT || 5000;
 const UPLOADS_PATH = path.join(__dirname, 'uploads');
@@ -66,7 +67,7 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
     
     
 
-    const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID  ;
+    FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID  ;
     const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET  ;
     const APP_BASE_URL = process.env.APP_BASE_URL || 'http://localhost:3000';
     const FACEBOOK_VERIFY_TOKEN_GLOBAL = process.env.FACEBOOK_VERIFY_TOKEN_GLOBAL;
