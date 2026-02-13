@@ -291,7 +291,7 @@ export default function ProduitsPage() {
     setLoading(true);
     
     try {
-      const response = await securePost('/api/categories', { nom: trimmedCat }); 
+      const response = await securePost('/categories', { nom: trimmedCat }); 
       
       const createdCat = response.data?.nom || trimmedCat;
       
@@ -412,7 +412,7 @@ export default function ProduitsPage() {
         form.append('image', imageFile);
       }
       
-      const res = await secureUpload('/api/produits', form,{
+      const res = await secureUpload('/produits', form,{
         headers: { 'Content-Type': 'multipart/form-data',
          }
       });
