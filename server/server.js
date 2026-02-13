@@ -14,6 +14,8 @@ const iaWebhooksRoutes = require('./src/routes/ia-webhooks');
 const debugRoutes = require('./debug-webhook');
 
 const WebSocket = require('ws');
+const pool = require('./src/db');
+app.locals.pool = pool;
 const wss = new WebSocket.Server({ noServer: true });
 
 
