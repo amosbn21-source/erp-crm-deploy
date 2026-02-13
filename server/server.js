@@ -81,7 +81,7 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
 
     app.locals.pool = pool;
 
-    app.use('/api/commandes', require('./src/routes/commandes'));
+  
 
     // ==================== MIDDLEWARE ====================
     app.use(helmet({ 
