@@ -238,7 +238,7 @@ export default function ProduitsPage() {
         params.search = search;
       }
 
-      const res = await secureGet('/api/produits', { params });
+      const res = await secureGet('/produits', { params });
       
       // Le backend retourne { success: true, data: [...], count: ... }
       if (res.data.success) {
@@ -259,7 +259,7 @@ export default function ProduitsPage() {
   const fetchCategories = async () => {
     setCatLoading(true);
     try {
-      const res = await secureGet('/api/categories');
+      const res = await secureGet('/categories');
       
       // Le backend retourne { success: true, data: [...], count: ... }
       if (res.data.success) {
