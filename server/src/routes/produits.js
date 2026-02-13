@@ -1,23 +1,12 @@
 // routes/produits.js
 // ⚡ Gestion des produits avec isolation des données par schéma utilisateur
-// Version corrigée : chaque utilisateur voit uniquement ses propres données
-
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
 const multer = require('multer');
-const path = require('path'); 
+const path = require('path');
 const fs = require('fs');
 
-const pool = new Pool({
-  user: 'postgres',
-  host: 'localhost',
-  database: 'erpcrm',
-  password: 'Jenoubliepas0987654321',
-  port: 5432,
-});
-
-// ⚡ Configuration du répertoire d'upload
+// ⚡ Configuration du répertoire d'upload (défini dans server.js, on l'utilise tel quel)
 const uploadDir = path.resolve(__dirname, '..', '..', 'uploads');
 
 // ⚡ Création du répertoire s'il n'existe pas
@@ -43,28 +32,34 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }
 });
 
-// ✅ Fonction utilitaire pour obtenir le schéma utilisateur
-const getUserSchema = (req) => {
-  // Récupère le schéma depuis le middleware enforceDataIsolation
-  if (req.userSchema && req.userSchema !== 'public') {
-    return req.userSchema;
+// ✅ Middleware pour obtenir le schéma utilisateur (déjà défini par enforceDataIsolation)
+router.use((req, res, next) => {
+  console.log('📦 produits.js - User schema:', req.userSchema);
+  console.log('📦 produits.js - User ID:', req.user?.id);
+  
+  if (!req.userSchema) {
+    console.warn('⚠️  Aucun schéma utilisateur défini, utilisation par défaut');
+    req.userSchema = `user_${req.user?.id || 1}`;
   }
   
-  // Fallback: construit le schéma depuis l'ID utilisateur
-  if (req.user && req.user.userId) {
-    return `user_${req.user.userId}`;
+  next();
+});
+
+// Middleware pour valider les IDs numériques
+const validateId = (req, res, next) => {
+  const { id } = req.params;
+  if (!/^\d+$/.test(id)) {
+    return res.status(400).json({
+      success: false,
+      error: 'ID invalide. Doit être un nombre.'
+    });
   }
-  
-  if (req.user && req.user.id) {
-    return `user_${req.user.id}`;
-  }
-  
-  // Schéma par défaut (ne devrait jamais arriver avec l'authentification)
-  return 'public';
+  req.params.id = parseInt(id, 10);
+  next();
 };
 
-// ✅ Vérifier et créer la table produits si nécessaire
-const ensureProduitsTable = async (schemaName) => {
+// ✅ Vérifier et créer la table produits si nécessaire (utilise req.app.locals.pool)
+const ensureProduitsTable = async (schemaName, pool) => {
   try {
     // Vérifier si le schéma existe
     const schemaExists = await pool.query(
@@ -114,13 +109,14 @@ const ensureProduitsTable = async (schemaName) => {
 // ✅ GET tous les produits avec filtres
 router.get('/', async (req, res) => {
   const { categorie, search } = req.query;
-  const userSchema = getUserSchema(req);
+  const userSchema = req.userSchema;
+  const pool = req.app.locals.pool;
   
-  console.log(`🔐 [PRODUITS] User ${req.user?.email || 'inconnu'} accède au schéma: ${userSchema}`);
+  console.log(`🔐 [PRODUITS] GET / pour schéma: ${userSchema}`);
   
   try {
     // S'assurer que la table existe
-    await ensureProduitsTable(userSchema);
+    await ensureProduitsTable(userSchema, pool);
     
     let query = `SELECT * FROM "${userSchema}".produits WHERE 1=1`;
     const params = [];
@@ -153,7 +149,7 @@ router.get('/', async (req, res) => {
     
     if (error.message.includes('n\'existe pas') || error.code === '42P01') {
       // Table n'existe pas, créer et retourner vide
-      await ensureProduitsTable(userSchema);
+      await ensureProduitsTable(userSchema, pool);
       return res.json({
         success: true,
         data: [],
@@ -171,9 +167,10 @@ router.get('/', async (req, res) => {
 });
 
 // ✅ GET un produit par ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', validateId, async (req, res) => {
   const { id } = req.params;
-  const userSchema = getUserSchema(req);
+  const userSchema = req.userSchema;
+  const pool = req.app.locals.pool;
   
   console.log(`🔐 [PRODUITS] GET /${id} pour schéma: ${userSchema}`);
   
@@ -200,7 +197,7 @@ router.get('/:id', async (req, res) => {
     console.error(`❌ Erreur GET /produits/${id} pour ${userSchema}:`, error);
     
     if (error.message.includes('n\'existe pas') || error.code === '42P01') {
-      await ensureProduitsTable(userSchema);
+      await ensureProduitsTable(userSchema, pool);
       return res.status(404).json({
         success: false,
         error: 'Produit introuvable',
@@ -217,7 +214,8 @@ router.get('/:id', async (req, res) => {
 
 // ✅ POST: créer un nouveau produit avec image optionnelle
 router.post('/', upload.single('image'), async (req, res) => {
-  const userSchema = getUserSchema(req);
+  const userSchema = req.userSchema;
+  const pool = req.app.locals.pool;
   const { nom, description, prix, stock, codeBarres, categorie } = req.body;
   
   console.log(`🔐 [PRODUITS] POST / pour schéma: ${userSchema}`);
@@ -232,7 +230,7 @@ router.post('/', upload.single('image'), async (req, res) => {
   
   try {
     // S'assurer que la table existe
-    await ensureProduitsTable(userSchema);
+    await ensureProduitsTable(userSchema, pool);
     
     const imageFilename = req.file ? req.file.filename : null;
     
@@ -269,9 +267,10 @@ router.post('/', upload.single('image'), async (req, res) => {
 });
 
 // ✅ PUT: modifier un produit existant
-router.put('/:id', upload.single('image'), async (req, res) => {
+router.put('/:id', upload.single('image'), validateId, async (req, res) => {
   const { id } = req.params;
-  const userSchema = getUserSchema(req);
+  const userSchema = req.userSchema;
+  const pool = req.app.locals.pool;
   const { nom, description, prix, stock, codeBarres, categorie } = req.body;
   const newImage = req.file ? req.file.filename : null;
   
@@ -342,9 +341,10 @@ router.put('/:id', upload.single('image'), async (req, res) => {
 });
 
 // ✅ DELETE: supprimer un produit
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', validateId, async (req, res) => {
   const { id } = req.params;
-  const userSchema = getUserSchema(req);
+  const userSchema = req.userSchema;
+  const pool = req.app.locals.pool;
   
   console.log(`🔐 [PRODUITS] DELETE /${id} pour schéma: ${userSchema}`);
   
@@ -403,12 +403,13 @@ router.delete('/:id', async (req, res) => {
 });
 
 // ✅ PUT: Mettre à jour le stock d'un produit
-router.put('/:id/stock', async (req, res) => {
+router.put('/:id/stock', validateId, async (req, res) => {
   const { id } = req.params;
-  const userSchema = getUserSchema(req);
+  const userSchema = req.userSchema;
+  const pool = req.app.locals.pool;
   const { quantite } = req.body;
   
-  if (!quantite) {
+  if (quantite === undefined) {
     return res.status(400).json({
       success: false,
       error: 'Quantité requise'
@@ -446,12 +447,13 @@ router.put('/:id/stock', async (req, res) => {
 
 // ✅ GET: Catégories disponibles
 router.get('/categories/list', async (req, res) => {
-  const userSchema = getUserSchema(req);
+  const userSchema = req.userSchema;
+  const pool = req.app.locals.pool;
   
   console.log(`🔐 [CATÉGORIES] GET /categories/list pour schéma: ${userSchema}`);
   
   try {
-    await ensureProduitsTable(userSchema);
+    await ensureProduitsTable(userSchema, pool);
     
     const result = await pool.query(
       `SELECT DISTINCT categorie 
