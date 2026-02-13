@@ -75,21 +75,23 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
 
     // Configuration CORS complète
     const corsOptions = {
-      origin: 'http://localhost:3000',
+      origin: [
+        'http://localhost:3000',
+        'https://erp-crm-client.onrender.com',
+        process.env.APP_BASE_URL
+      ].filter(Boolean),
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With', 'X-CSRF-Token'],
-      exposedHeaders: ['Content-Type', 'Authorization', 'Content-Length', 'X-Request-Id', 'X-Total-Count'],
-      preflightContinue: false,
-      optionsSuccessStatus: 204,
-      maxAge: 86400
+      allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
     };
-
     app.use(cors(corsOptions));
-
-    // Middleware CORS personnalisé pour toutes les routes
+    
+    // Middleware CORS personnalisé (vers la ligne 68)
     app.use((req, res, next) => {
-      res.header('Access-Control-Allow-Origin', 'http://localhost:3000');
+      const allowedOrigin = req.headers.origin?.includes('localhost') 
+        ? req.headers.origin 
+        : 'https://erp-crm-client.onrender.com';
+      res.header('Access-Control-Allow-Origin', allowedOrigin);
       res.header('Access-Control-Allow-Credentials', 'true');
       res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
       res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, Origin, X-Requested-With');
