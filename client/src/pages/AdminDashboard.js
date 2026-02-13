@@ -1104,7 +1104,7 @@ Généré automatiquement depuis le dashboard.
       
       // Option 1: Essayer l'API de génération de PDF
       try {
-        const response = await securePost('/api/reports/generate-dashboard-report', reportData, {
+        const response = await securePost('/reports/generate-dashboard-report', reportData, {
           timeout: 30000
         });
         
