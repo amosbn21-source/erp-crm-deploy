@@ -873,10 +873,12 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
 
 
     // Fonction pour vérifier et créer les tables si nécessaire
-    async function ensureUserTables(schemaName, userId) {
+    async function ensureUserTables(schemaName, userId, poolInstance = pool) {
       try {
+        console.log(`🔍 ensureUserTables appelé pour ${schemaName}, userId=${userId}`);
+        
         // Vérifier si le schéma existe
-        const schemaExists = await pool.query(`
+        const schemaExists = await poolInstance.query(`
           SELECT EXISTS (
             SELECT FROM information_schema.schemata 
             WHERE schema_name = $1
@@ -890,7 +892,7 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
         }
         
         // Vérifier si la table contacts existe
-        const tableExists = await pool.query(`
+        const tableExists = await poolInstance.query(`
           SELECT EXISTS (
             SELECT FROM information_schema.tables 
             WHERE table_schema = $1 
