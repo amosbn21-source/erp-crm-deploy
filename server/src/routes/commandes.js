@@ -7,6 +7,7 @@ const router = express.Router();
 
 // ==================== FONCTIONS UTILITAIRES ====================
 
+
 // Fonction pour corriger les tables existantes
 async function fixExistingTables(schemaName) {
   try {
