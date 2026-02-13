@@ -380,7 +380,7 @@ export default function CommandesPage() {
         
         try {
           console.log(`🔄 Appel PDF pour doc #${documentId}`);
-          const pdfRes = await securePost(`/api/documents-puppeteer/${documentId}/generate-pdf-puppeteer`);
+          const pdfRes = await securePost(`documents-puppeteer/${documentId}/generate-pdf-puppeteer`);
           console.log('📄 Réponse PDF:', pdfRes.data);
           
           if (pdfRes.data && pdfRes.data.pdfUrl) {
@@ -522,7 +522,7 @@ export default function CommandesPage() {
         // Générer le PDF
         try {
           console.log(`🔄 Appel PDF pour facture #${documentId}`);
-          const pdfRes = await securePost(`/api/documents-puppeteer/${documentId}/generate-pdf-puppeteer`);
+          const pdfRes = await securePost(`/documents-puppeteer/${documentId}/generate-pdf-puppeteer`);
           console.log('📄 Réponse PDF:', pdfRes.data);
           
           if (pdfRes.data && pdfRes.data.pdfUrl) {
@@ -612,7 +612,7 @@ export default function CommandesPage() {
     
     try {
       // Mettre à jour le statut de la commande via PATCH
-      const res = await securePatch(`/api/commandes/${selectedCommande.id}`, {
+      const res = await securePatch(`/commandes/${selectedCommande.id}`, {
         statut: nouveauStatut
       }
     );
@@ -635,7 +635,7 @@ export default function CommandesPage() {
     
     setLoading(true);
     try {
-      await securePost(`/api/commandes/${selectedCommande.id}/annuler`);
+      await securePost(`/commandes/${selectedCommande.id}/annuler`);
       showNotif('Commande annulée et stock restauré', 'success');
       fetchCommandes();
       fetchProduits();
@@ -798,7 +798,7 @@ export default function CommandesPage() {
       if (editingCommande) {
         // ✅ URL CORRECTE : /api/commandes/:id
         console.log(`✏️ Modification commande #${editingCommande.id}`);
-        res = await securePut(`/api/commandes/${editingCommande.id}`, commandeData);
+        res = await securePut(`/commandes/${editingCommande.id}`, commandeData);
       } else {
         console.log('➕ Création nouvelle commande');
         res = await securePost('/commandes', commandeData);
@@ -840,7 +840,7 @@ export default function CommandesPage() {
 
     setLoading(true);
     try {
-      await secureDelete(`/api/commandes/${id}`);
+      await secureDelete(`/commandes/${id}`);
       setCommandes(prev => prev.filter(c => c.id !== id));
       showNotif('Commande supprimée avec succès');
       fetchStats();
