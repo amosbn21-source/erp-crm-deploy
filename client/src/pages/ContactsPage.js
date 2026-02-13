@@ -350,7 +350,7 @@ export default function ContactsPage() {
         response = await securePut(`/api/contacts/${editingContact.id}`, contactData);
       } else {
         console.log('➕ Création d\'un nouveau contact');
-        response = await securePost('/api/contacts', contactData);
+        response = await securePost('/contacts', contactData);
       }
 
       console.log('📦 Réponse API:', response.data);
