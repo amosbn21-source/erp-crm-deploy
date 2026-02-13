@@ -103,7 +103,7 @@ export default function CommandesPage() {
   const fetchCommandes = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await secureGet('/api/commandes');
+      const res = await secureGet('/commandes');
       console.log('📦 Réponse API commandes:', res.data);
       
       const commandesData = res.data?.data || [];
@@ -164,7 +164,7 @@ export default function CommandesPage() {
     console.log('🔍 fetchContacts appelé');
 
     try {
-      const res = await secureGet('/api/contacts'); // ⚠️ PAS /api/commandes/contacts
+      const res = await secureGet('/contacts'); // ⚠️ PAS /api/commandes/contacts
       
       console.log('📋 Réponse API contacts (appel unique):', res.data?.data?.length || 0)
       
@@ -209,7 +209,7 @@ export default function CommandesPage() {
   const fetchProduits = useCallback(async () => {
     try {
       console.log('🛍️ Début fetchProduits...');
-      const res = await secureGet('/api/produits');
+      const res = await secureGet('/produits');
       console.log('🔗 URL appelée: /api/produits');
       console.log('🔗 Token présent:', !!localStorage.getItem('authToken'));
       console.log('🛍️ Réponse API produits complète:', res);
@@ -280,7 +280,7 @@ export default function CommandesPage() {
 
   const fetchStats = useCallback(async () => {
     try {
-      const res = await secureGet('/api/commandes/stats');
+      const res = await secureGet('/commandes/stats');
       console.log('📊 Réponse API stats:', res.data);
       
       const statsData = res.data?.data || {};
