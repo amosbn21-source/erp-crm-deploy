@@ -1180,7 +1180,7 @@ Généré automatiquement depuis le dashboard.
         params.append('schema', getUserSchema());
       }
       
-      const url = `/api/dashboard/stats?${params.toString()}`;
+      const url = `/dashboard/stats?${params.toString()}`;
       console.log('📊 Fetching dashboard stats:', url);
       
       const statsRes = await secureGet(url);
@@ -1280,7 +1280,7 @@ Généré automatiquement depuis le dashboard.
         params.append('schema', getUserSchema());
       }
       
-      const res = await secureGet(`/commandes/recentes?${params.toString()}`);
+      const response = await secureGet(`/commandes/recentes?limit=5&${params.toString()}`);
       console.log('📦 Commandes API Response:', res.data);
       
       if (res.data.success && Array.isArray(res.data.data)) {
