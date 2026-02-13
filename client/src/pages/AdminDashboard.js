@@ -1280,7 +1280,7 @@ Généré automatiquement depuis le dashboard.
         params.append('schema', getUserSchema());
       }
       
-      const res = await secureGet(`/api/commandes/recentes?${params.toString()}`);
+      const res = await secureGet(`/commandes/recentes?${params.toString()}`);
       console.log('📦 Commandes API Response:', res.data);
       
       if (res.data.success && Array.isArray(res.data.data)) {
