@@ -1,31 +1,20 @@
 // src/services/api.js - VERSION SANS IA
 import axios from 'axios';
 
+// L'URL de base (sans /api à la fin)
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-
-
-axios.get(`${API_BASE}/api/dashboard/stats`);
-
-// Instance Axios
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL + '/api' : '/api',  
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  baseURL: `${API_BASE}/api`,  // ← ICI on ajoute /api UNE SEULE FOIS
+  headers: { 'Content-Type': 'application/json' },
 });
 
 // Ajouter le token automatiquement
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+})
 
 // Gérer les erreurs 401
 api.interceptors.response.use(
