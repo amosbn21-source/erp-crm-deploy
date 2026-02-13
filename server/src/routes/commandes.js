@@ -312,12 +312,14 @@ router.use(async (req, res, next) => {
 router.get('/', async (req, res) => {
   try {
     const schemaName = req.userSchema;
+    const db = req.app.locals.pool; // ← récupération du pool
+    
     console.log(`🔍 Début GET /api/commandes pour schéma: ${schemaName}`);
     
     // Assurer que les tables existent
     await ensureUserTables(schemaName, req.user?.id);
     
-    const result = await req.app.locals.pool.query(`
+    const result = await db.query(`
       SELECT 
         c.id, 
         c.numero_commande,
@@ -343,7 +345,7 @@ router.get('/', async (req, res) => {
 
     // Pour chaque commande, récupère ses lignes produit
     for (const cmd of commandes) {
-      const produitsRes = await pool.query(
+      const produitsRes = await db.query(
         `SELECT 
            cp.id,
            cp.commande_id,
@@ -394,12 +396,14 @@ router.get('/', async (req, res) => {
 router.get('/stats', async (req, res) => {
   try {
     const schemaName = req.userSchema;
+    const db = req.app.locals.pool; 
+    
     console.log(`📊 GET /api/commandes/stats pour schéma: ${schemaName}`);
     
     await ensureUserTables(schemaName, req.user?.id);
     
     // Statistiques générales
-    const stats = await pool.query(`
+    const stats = await db.query(`
       SELECT 
         COUNT(*) as total_commandes,
         COALESCE(SUM(total), 0) as chiffre_affaires,
@@ -414,7 +418,7 @@ router.get('/stats', async (req, res) => {
     `);
     
     // Top produits
-    const topProduits = await pool.query(`
+    const topProduits = await db.query(`
       SELECT 
         p.id,
         p.nom,
@@ -429,7 +433,7 @@ router.get('/stats', async (req, res) => {
     `);
     
     // Évolution mensuelle
-    const evolution = await pool.query(`
+    const evolution = await db.query(`
       SELECT 
         DATE_TRUNC('month', date) as mois,
         TO_CHAR(DATE_TRUNC('month', date), 'YYYY-MM') as mois_format,
@@ -444,7 +448,7 @@ router.get('/stats', async (req, res) => {
     `);
     
     // Top clients
-    const topClients = await pool.query(`
+    const topClients = await db.query(`
       SELECT 
         c.id,
         c.nom,
@@ -462,7 +466,7 @@ router.get('/stats', async (req, res) => {
     `);
     
     // Produits en rupture de stock
-    const ruptureStock = await pool.query(`
+    const ruptureStock = await db.query(`
       SELECT 
         id,
         nom,
@@ -501,13 +505,14 @@ router.get('/stats', async (req, res) => {
 router.get('/recentes', async (req, res) => {
   try {
     const schemaName = req.userSchema;
+    const db = req.app.locals.pool; 
     console.log(`📊 GET /api/commandes/recentes pour schéma: ${schemaName}`);
     
     // Assurer que les tables existent
     await ensureUserTables(schemaName, req.user?.id);
     
     // Récupérer les 10 commandes les plus récentes
-    const result = await req.app.locals.pool.query(`
+    const result = db.query(`
       SELECT 
         c.id, 
         c.numero_commande,
@@ -533,7 +538,7 @@ router.get('/recentes', async (req, res) => {
     
     // Pour chaque commande, récupère ses lignes produit
     for (const cmd of result.rows) {
-      const produitsRes = await pool.query(
+      const produitsRes = db.query(
         `SELECT 
            cp.id,
            cp.commande_id,
@@ -574,6 +579,7 @@ router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const schemaName = req.userSchema;
+    const db = req.app.locals.pool; 
     
     console.log(`🔍 GET /api/commandes/${id} pour schéma: ${schemaName}`);
     
@@ -608,6 +614,7 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   const { date, statut, total, contactId, produits } = req.body;
   const schemaName = req.userSchema;
+  const db = req.app.locals.pool; 
   
   console.log(`📝 Création commande dans schéma: ${schemaName}`);
   
@@ -630,7 +637,7 @@ router.post('/', async (req, res) => {
   // Assurer que les tables existent
   await ensureUserTables(schemaName, req.user?.id);
   
-  const client = await pool.connect();
+  const client = await db.connect();
   
   try {
     await client.query('BEGIN');
@@ -745,6 +752,7 @@ router.put('/:id', async (req, res) => {
   const { id } = req.params;
   const { date, statut, contactId, produits } = req.body;
   const schemaName = req.userSchema;
+  const db = req.app.locals.pool; 
   
   console.log(`✏️ PUT /api/commandes/${id} pour schéma: ${schemaName}`);
   console.log('📦 Données reçues:', { date, statut, contactId, produits: produits?.length });
@@ -760,7 +768,7 @@ router.put('/:id', async (req, res) => {
   // Assurer que les tables existent
   await ensureUserTables(schemaName, req.user?.id);
   
-  const client = await pool.connect();
+  const client = await db.connect();
   
   try {
     await client.query('BEGIN');
@@ -925,6 +933,7 @@ router.patch('/:id', async (req, res) => {
   const { id } = req.params;
   const { statut } = req.body;
   const schemaName = req.userSchema;
+  const db = req.app.locals.pool; 
   
   console.log(`🔄 PATCH /api/commandes/${id} pour schéma: ${schemaName}`);
   console.log('📦 Nouveau statut:', statut);
@@ -948,7 +957,7 @@ router.patch('/:id', async (req, res) => {
   // Assurer que les tables existent
   await ensureUserTables(schemaName, req.user?.id);
   
-  const client = await pool.connect();
+  const client = await db.connect();
   
   try {
     await client.query('BEGIN');
@@ -1111,13 +1120,14 @@ router.patch('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
   const schemaName = req.userSchema;
+  const db = req.app.locals.pool; 
   
   console.log(`🗑️ DELETE /api/commandes/${id} pour schéma: ${schemaName}`);
   
   // Assurer que les tables existent
   await ensureUserTables(schemaName, req.user?.id);
   
-  const client = await pool.connect();
+  const client = await db.connect();
   
   try {
     await client.query('BEGIN');
@@ -1224,13 +1234,14 @@ router.get('/:id/check-stock', async (req, res) => {
   try {
     const { id } = req.params;
     const schemaName = req.userSchema;
+    const db = req.app.locals.pool; 
     
     console.log(`📦 GET /api/commandes/${id}/check-stock pour schéma: ${schemaName}`);
     
     await ensureUserTables(schemaName, req.user?.id);
     
     // Récupérer les produits de la commande
-    const produitsCommande = await pool.query(`
+    const produitsCommande = await db.query(`
       SELECT 
         cp.produit_id,
         p.nom,
