@@ -1,5 +1,25 @@
 // Fichier: src/services/api-ia.js
 import api from './api';
+
+const apiIA = {
+  getStats: async () => {
+    try {
+      const response = await api.get('/ia/stats');
+      return response.data;
+    } catch (error) {
+      console.error('Erreur stats IA:', error);
+      return { success: false, stats: {} };
+    }
+  },
+  getSettings: async () => {
+    try {
+      const response = await api.get('/ia/settings');
+      return response.data;
+    } catch (error) {
+      return { success: true, enabled: true };
+    }
+  },
+    
 export const getStats = () => api.get('/ia/stats');
 
 const iaService = {
