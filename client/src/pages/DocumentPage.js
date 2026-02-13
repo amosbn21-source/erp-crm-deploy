@@ -202,7 +202,7 @@ export default function DocumentPage() {
       console.log('📝 Création devis avec données:', documentData);
       
       // 2. Créer le document de devis
-      const createRes = await securePost('/api/documents', documentData);
+      const createRes = await securePost('/documents', documentData);
       
       // 3. Extraire l'ID du document
       const documentId = 
@@ -393,7 +393,7 @@ export default function DocumentPage() {
       console.log('📝 Création facture avec données:', documentData);
       
       // 2. Créer le document de facture
-      const createRes = await securePost('/api/documents', documentData);
+      const createRes = await securePost('/documents', documentData);
       
       // 3. Extraire l'ID du document
       const documentId = 
