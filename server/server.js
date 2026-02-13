@@ -59,7 +59,7 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
       // Tenter de reconnecter ? Optionnel
     });
 
-    module.exports = { pool, app };
+    
     
 
     const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID  ;
@@ -8778,3 +8778,4 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
     process.exit(1);
   }
 })();
+module.exports = { pool, app };
