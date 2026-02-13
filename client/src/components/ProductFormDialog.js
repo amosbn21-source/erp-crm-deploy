@@ -61,7 +61,7 @@ const ProductFormDialog = ({ onClose, onSuccess, embedded = false }) => {
         form.append('image', imageFile);
       }
 
-      const res = await secureUpload('/api/produits', form, {
+      const res = await secureUpload('/produits', form, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
