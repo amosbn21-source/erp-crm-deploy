@@ -467,7 +467,7 @@ export default function ProduitsPage() {
         form.append('image', imageFile);
       }
       
-      const res = await securePut(`/api/produits/${editingProduit.id}`, form, {
+      const res = await securePut(`/produits/${editingProduit.id}`, form, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
@@ -497,7 +497,7 @@ export default function ProduitsPage() {
 
     setLoading(true);
     try {
-      await secureDelete(`/api/produits/${id}`);
+      await secureDelete(`/produits/${id}`);
       setProduits(prev => prev.filter(p => p.id !== id));
       showNotif('Produit supprimé avec succès', 'success');
     } catch (err) {
