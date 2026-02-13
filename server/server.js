@@ -92,32 +92,29 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
 
     // Configuration CORS complète
     const corsOptions = {
-      origin: [
-        'http://localhost:3000',
-        'https://erp-crm-client.onrender.com',
-        process.env.APP_BASE_URL
-      ].filter(Boolean),
+      origin: function (origin, callback) {
+        const allowedOrigins = [
+          'http://localhost:3000',
+          'https://erp-crm-client.onrender.com',
+          process.env.APP_BASE_URL
+        ].filter(Boolean);
+        
+        // Autoriser les requêtes sans origine (ex: outils en ligne de commande)
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.indexOf(origin) !== -1) {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
+      },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
     };
+    
     app.use(cors(corsOptions));
     
-    // Middleware CORS personnalisé (vers la ligne 68)
-    app.use((req, res, next) => {
-      const allowedOrigin = req.headers.origin?.includes('localhost') 
-        ? req.headers.origin 
-        : 'https://erp-crm-client.onrender.com';
-      res.header('Access-Control-Allow-Origin', allowedOrigin);
-      res.header('Access-Control-Allow-Credentials', 'true');
-      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, Origin, X-Requested-With');
-      
-      if (req.method === 'OPTIONS') {
-        return res.status(200).end();
-      }
-      
-      next();
     });
 
     app.use(express.json({ limit: '50mb' }));
