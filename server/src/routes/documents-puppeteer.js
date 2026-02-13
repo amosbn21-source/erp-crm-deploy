@@ -263,7 +263,12 @@ router.post('/:id/generate-pdf-puppeteer', async (req, res) => {
     
     browser = await puppeteer.launch({
       headless: 'new',
-      args: [ '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage' ],
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu'
+      ],
       timeout: 60000
     });
     
