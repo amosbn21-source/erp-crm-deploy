@@ -29,7 +29,7 @@ const OrderFormDialog = ({ onClose, onSuccess, embedded = false }) => {
 
   const fetchContacts = useCallback(async () => {
     try {
-      const res = await secureGet('/api/contacts');
+      const res = await secureGet('/contacts');
       if (res.data?.success) {
         setContacts(res.data.data || []);
       }
@@ -40,7 +40,7 @@ const OrderFormDialog = ({ onClose, onSuccess, embedded = false }) => {
 
   const fetchProduits = useCallback(async () => {
     try {
-      const res = await secureGet('/api/produits');
+      const res = await secureGet('/produits');
       if (res.data?.success) {
         setProduits(res.data.data || []);
       }
@@ -101,7 +101,7 @@ const OrderFormDialog = ({ onClose, onSuccess, embedded = false }) => {
         }))
       };
 
-      const res = await securePost('/api/commandes', commandeData);
+      const res = await securePost('/commandes', commandeData);
       
       if (onSuccess) {
         onSuccess(res.data.data);
