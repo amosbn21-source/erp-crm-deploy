@@ -620,6 +620,9 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_messages_type ON "${schemaName}".messages(type)`);
         await client.query(`CREATE INDEX IF NOT EXISTS idx_messages_date ON "${schemaName}".messages(created_at)`);
 
+        await client.query('COMMIT');
+        console.log(`✅ Tables principales créées pour ${schemaName}`);
+
         await client.query('BEGIN');
 
         await createIATablesForSchema(schemaName);
@@ -627,19 +630,18 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
         await client.query(`
           CREATE TABLE IF NOT EXISTS "${schemaName}".webhook_logs (
             id SERIAL PRIMARY KEY,
-            user_id INTEGER NOT NULL,
-            account_id INTEGER,
+            user_id INTEGER,
+            account_id INTEGER REFERENCES "${schemaName}".webhook_accounts(id) ON DELETE CASCADE,
             platform VARCHAR(50) NOT NULL,
             url TEXT,
-            method VARCHAR(10) DEFAULT 'POST',
+            method VARCHAR(10),
             status_code INTEGER,
-            headers JSONB DEFAULT '{}',
+            headers JSONB,
             payload JSONB,
             response JSONB,
             error TEXT,
-            processing_time INTEGER,
-            timestamp TIMESTAMP DEFAULT NOW(),
-            created_at TIMESTAMP DEFAULT NOW()
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
           )
         `);
 
@@ -719,68 +721,7 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
         
         // ==================== ÉTAPE 4: CRÉATION DES INDEX ====================
         
-        console.log('🔍 Création des index...');
         
-        // Index pour contacts
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_contacts_email ON "${schemaName}".contacts(email)`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_contacts_nom ON "${schemaName}".contacts(nom)`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_contacts_entreprise ON "${schemaName}".contacts(entreprise)`);
-        
-        // Index pour produits
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_produits_nom ON "${schemaName}".produits(nom)`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_produits_categorie ON "${schemaName}".produits(categorie)`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_produits_actif ON "${schemaName}".produits(actif)`);
-        
-        // Index pour commandes
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_commandes_numero ON "${schemaName}".commandes(numero_commande)`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_commandes_statut ON "${schemaName}".commandes(statut)`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_commandes_date ON "${schemaName}".commandes(date)`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_commandes_contact ON "${schemaName}".commandes(contact_id)`);
-        
-        // Index pour lignes_commande
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_lignes_commande_commande ON "${schemaName}".lignes_commande(commande_id)`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_lignes_commande_produit ON "${schemaName}".lignes_commande(produit_id)`);
-        
-        // Index pour opportunites
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_opportunites_statut ON "${schemaName}".opportunites(statut)`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_opportunites_contact ON "${schemaName}".opportunites(contact_id)`);
-        
-        // Index pour categories
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_categories_type ON "${schemaName}".categories(type)`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_categories_parent ON "${schemaName}".categories(parent_id)`);
-        
-        // Index pour documents
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_documents_type ON "${schemaName}".documents(type)`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_documents_reference ON "${schemaName}".documents(reference)`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_documents_statut ON "${schemaName}".documents(statut)`);
-        
-        // Index pour tables de support
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_activity_user ON "${schemaName}".activity_logs(user_id)`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_activity_action ON "${schemaName}".activity_logs(action)`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_activity_date ON "${schemaName}".activity_logs(created_at)`);
-        
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_notifications_user ON "${schemaName}".notifications(user_id)`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_notifications_read ON "${schemaName}".notifications(read)`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_notifications_priority ON "${schemaName}".notifications(priority)`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_notifications_expires ON "${schemaName}".notifications(expires_at)`);
-        
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_user_settings_user ON "${schemaName}".user_settings(user_id)`);
-        
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_deleted_entities_type ON "${schemaName}".deleted_entities(entity_type)`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_deleted_entities_date ON "${schemaName}".deleted_entities(deleted_at)`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_deleted_entities_user ON "${schemaName}".deleted_entities(deleted_by)`);
-
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_automation_settings_user ON "${schemaName}".automation_settings(user_id)`);
-
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_conversations_contact ON "${schemaName}".conversations(contact_id)`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_conversations_channel ON "${schemaName}".conversations(channel)`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_conversations_status ON "${schemaName}".conversations(statut)`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_conversations_interaction ON "${schemaName}".conversations(derniere_interaction)`);
-
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_messages_conversation ON "${schemaName}".messages(conversation_id)`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_messages_contact ON "${schemaName}".messages(contact_id)`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_messages_type ON "${schemaName}".messages(type)`);
-        await client.query(`CREATE INDEX IF NOT EXISTS idx_messages_date ON "${schemaName}".messages(created_at)`);
         
         
 
