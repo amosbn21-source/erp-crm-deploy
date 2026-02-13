@@ -18,4 +18,51 @@ export const post = (url, data) => api.post(url, data);
 export const put = (url, data) => api.put(url, data);
 export const del = (url) => api.delete(url);
 
+// Version "sécurisée" de post avec gestion d'erreur standardisée
+
+// Vous pouvez ajouter aussi secureGet, securePut, secureDelete si besoin
+export const secureGet = async (url, params) => {
+  try {
+    const response = await api.get(url, { params });
+    return response.data;
+  } catch (error) {
+    console.error(`❌ secureGet error for ${url}:`, error);
+    throw error;
+  }
+};
+
+export const securePost = async (url, data) => {
+  try {
+    const response = await api.post(url, data);
+    return response.data;
+  } catch (error) {
+    console.error(`❌ securePost error for ${url}:`, error);
+    throw error;
+  }
+};
+
+export const securePut = async (url, data) => {
+  try {
+    const response = await api.put(url, data);
+    return response.data;
+  } catch (error) {
+    console.error(`❌ securePut error for ${url}:`, error);
+    throw error;
+  }
+};
+
+export const secureDelete = async (url) => {
+  try {
+    const response = await api.delete(url);
+    return response.data;
+  } catch (error) {
+    console.error(`❌ secureDelete error for ${url}:`, error);
+    throw error;
+  }
+};
+
+
+
+
+
 export default api;
