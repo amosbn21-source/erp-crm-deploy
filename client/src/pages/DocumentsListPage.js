@@ -42,7 +42,7 @@ export default function DocumentsListPage() {
   const fetchDocuments = async () => {
     setLoading(true);
     try {
-        const res = await secureGet('/api/documents');
+        const res = await secureGet('/documents');
         console.log('📄 Réponse API documents complète:', res);
         
         // ✅ EXTRACTION CORRECTE DES DONNÉES
