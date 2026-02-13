@@ -1281,10 +1281,10 @@ Généré automatiquement depuis le dashboard.
       }
       
       const response = await secureGet(`/commandes/recentes?limit=5&${params.toString()}`);
-      console.log('📦 Commandes API Response:', res.data);
+      console.log('📦 Commandes API Response:', response.data);
       
-      if (res.data.success && Array.isArray(res.data.data)) {
-        setCommandes(res.data.data);
+      if (response.data.success && Array.isArray(response.data.data)) {
+        setCommandes(response.data.data)
       } else {
         setCommandes([]);
       }
@@ -1302,7 +1302,7 @@ Généré automatiquement depuis le dashboard.
       if (filters.endDate) params.append('endDate', formatForAPI(filters.endDate));
       if (filters.statut) params.append('statut', filters.statut);
       
-      const url = `/api/stats/revenue-details?${params.toString()}`;
+      const url = `/stats/revenue-details?${params.toString()}`;
       const res = await secureGet(url);
       
       if (res.data.success && res.data.data) {
