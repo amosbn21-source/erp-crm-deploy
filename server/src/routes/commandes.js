@@ -242,7 +242,7 @@ async function notifyMessenger(compte, message) {
 
 // Fonction helper pour récupérer une commande avec ses produits
 async function getCommandeAvecProduits(commandeId, schemaName) {
-  const result = await pool.query(
+  const result = await req.app.locals.pool.query(
     `SELECT 
       c.*,
       ct.nom AS "contact_nom",
@@ -317,7 +317,7 @@ router.get('/', async (req, res) => {
     // Assurer que les tables existent
     await ensureUserTables(schemaName, req.user?.id);
     
-    const result = await pool.query(`
+    const result = await req.app.locals.pool.query(`
       SELECT 
         c.id, 
         c.numero_commande,
@@ -507,7 +507,7 @@ router.get('/recentes', async (req, res) => {
     await ensureUserTables(schemaName, req.user?.id);
     
     // Récupérer les 10 commandes les plus récentes
-    const result = await pool.query(`
+    const result = await req.app.locals.pool.query(`
       SELECT 
         c.id, 
         c.numero_commande,
