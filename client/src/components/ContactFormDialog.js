@@ -45,7 +45,7 @@ const ContactFormDialog = ({ onClose, onSuccess, embedded = false }) => {
         notes: formData.notes.trim() || null
       };
 
-      const res = await securePost('/api/contacts', contactData);
+      const res = await securePost('/contacts', contactData);
       
       if (onSuccess) {
         onSuccess(res.data.data);
