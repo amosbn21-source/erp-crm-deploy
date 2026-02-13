@@ -153,7 +153,7 @@ export default function ContactsPage() {
     try {
       console.log('🔍 Appel API: GET /api/contacts');
       
-      const res = await secureGet('/api/contacts');
+      const res = await secureGet('/contacts');
       
       console.log('📦 Réponse API:', {
         status: res.status,
