@@ -39,12 +39,19 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
       ssl: {
         rejectUnauthorized: false // OBLIGATOIRE pour Render
       },
-      max: 20,                       // Nombre maximum de clients dans le pool
-      idleTimeoutMillis: 30000,       // Temps avant de fermer une connexion inactive
-      connectionTimeoutMillis: 20000, // Temps max pour établir une connexion
-      keepAlive: true,                // Garder les connexions actives
-      keepAliveInitialDelayMillis: 10000
+      max: 20,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 20000,
     });
+
+    pool.connect()
+      .then(client => {
+        console.log('✅ PostgreSQL connecté via DATABASE_URL');
+        client.release();
+      })
+      .catch(err => {
+        console.error('❌ PostgreSQL connexion échouée:', err.message);
+      })
 
     // Gestion des erreurs de connexion
     pool.on('error', (err) => {
