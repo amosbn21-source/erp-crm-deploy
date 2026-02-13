@@ -380,7 +380,7 @@ export default function CommandesPage() {
         
         try {
           console.log(`🔄 Appel PDF pour doc #${documentId}`);
-          const pdfRes = await securePost(`documents-puppeteer/${documentId}/generate-pdf-puppeteer`);
+          const pdfRes = await securePost(`/documents-puppeteer/${documentId}/generate-pdf-puppeteer`);
           console.log('📄 Réponse PDF:', pdfRes.data);
           
           if (pdfRes.data && pdfRes.data.pdfUrl) {
