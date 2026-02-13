@@ -1,7 +1,7 @@
 // routes/commandes.js - VERSION AVEC ISOLATION DES DONNÉES
 const express = require('express');
 const router = express.Router();
-const { pool } = require('../../server'); 
+//const { pool } = require('../../server'); 
 
 
 
@@ -11,7 +11,7 @@ const { pool } = require('../../server');
 async function fixExistingTables(schemaName) {
   try {
     // Vérifier si la colonne numero_commande existe
-    const columnCheck = await pool.query(`
+    const columnCheck = await db.query(`
       SELECT EXISTS (
         SELECT FROM information_schema.columns 
         WHERE table_schema = $1 
@@ -22,7 +22,7 @@ async function fixExistingTables(schemaName) {
     
     if (columnCheck.rows[0].exists) {
       // Vérifier s'il y a des valeurs NULL dans numero_commande
-      const nullCheck = await pool.query(`
+      const nullCheck = await db.query(`
         SELECT COUNT(*) as null_count 
         FROM "${schemaName}".commandes 
         WHERE numero_commande IS NULL
@@ -32,7 +32,7 @@ async function fixExistingTables(schemaName) {
         console.log(`🔄 Correction des ${nullCheck.rows[0].null_count} commandes sans numéro dans ${schemaName}...`);
         
         // Générer des numéros uniques pour chaque commande
-        const commandesSansNumero = await pool.query(`
+        const commandesSansNumero = await db.query(`
           SELECT id, created_at FROM "${schemaName}".commandes 
           WHERE numero_commande IS NULL 
           ORDER BY id
@@ -66,7 +66,7 @@ async function fixExistingTables(schemaName) {
 async function ensureUserTables(schemaName, userId) {
   try {
     // Vérifier si le schéma existe
-    const schemaExists = await pool.query(`
+    const schemaExists = await db.query(`
       SELECT EXISTS (
         SELECT FROM information_schema.schemata 
         WHERE schema_name = $1
@@ -83,7 +83,7 @@ async function ensureUserTables(schemaName, userId) {
     const requiredTables = ['contacts', 'produits', 'commandes', 'commande_produits'];
     
     for (const tableName of requiredTables) {
-      const tableExists = await pool.query(`
+      const tableExists = await db.query(`
         SELECT EXISTS (
           SELECT FROM information_schema.tables 
           WHERE table_schema = $1 
@@ -113,10 +113,10 @@ async function createUserTables(userId) {
   
   try {
     // 1. Créer le schéma
-    await pool.query(`CREATE SCHEMA IF NOT EXISTS "${schemaName}"`);
+    await db.query(`CREATE SCHEMA IF NOT EXISTS "${schemaName}"`);
     
     // 2. Table contacts
-    await pool.query(`
+    await db.query(`
       CREATE TABLE IF NOT EXISTS "${schemaName}".contacts (
         id SERIAL PRIMARY KEY,
         nom VARCHAR(100) NOT NULL,
@@ -137,7 +137,7 @@ async function createUserTables(userId) {
     `);
     
     // 3. Table produits
-    await pool.query(`
+    await db.query(`
       CREATE TABLE IF NOT EXISTS "${schemaName}".produits (
         id SERIAL PRIMARY KEY,
         nom VARCHAR(200) NOT NULL,
@@ -153,7 +153,7 @@ async function createUserTables(userId) {
     `);
     
     // 4. Table commandes - AVEC NUMÉRO DE COMMANDE
-    await pool.query(`
+    await db.query(`
       CREATE TABLE IF NOT EXISTS "${schemaName}".commandes (
         id SERIAL PRIMARY KEY,
         numero_commande VARCHAR(50) UNIQUE NOT NULL,
@@ -169,7 +169,7 @@ async function createUserTables(userId) {
     `);
     
     // 5. Table commande_produits
-    await pool.query(`
+    await db.query(`
       CREATE TABLE IF NOT EXISTS "${schemaName}".commande_produits (
         id SERIAL PRIMARY KEY,
         commande_id INTEGER REFERENCES "${schemaName}".commandes(id) ON DELETE CASCADE,
@@ -197,7 +197,7 @@ async function generateUniqueNumeroCommande(schemaName) {
   
   try {
     // Récupérer le dernier numéro pour ce mois
-    const lastCommande = await pool.query(`
+    const lastCommande = await db.query(`
       SELECT numero_commande 
       FROM "${schemaName}".commandes 
       WHERE numero_commande LIKE $1 
