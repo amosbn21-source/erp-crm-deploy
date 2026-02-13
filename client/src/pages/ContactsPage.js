@@ -347,7 +347,7 @@ export default function ContactsPage() {
       
       if (editingContact) {
         console.log(`✏️ Modification du contact ${editingContact.id}`);
-        response = await securePut(`/api/contacts/${editingContact.id}`, contactData);
+        response = await securePut(`/contacts/${editingContact.id}`, contactData);
       } else {
         console.log('➕ Création d\'un nouveau contact');
         response = await securePost('/contacts', contactData);
@@ -489,7 +489,7 @@ export default function ContactsPage() {
 
     setLoading(true);
     try {
-      await secureDelete(`/api/contacts/${id}`);
+      await secureDelete(`/contacts/${id}`);
       
       // Mise à jour IMMÉDIATE de l'état local
       setContacts(prev => prev.filter(c => c.id !== id));
