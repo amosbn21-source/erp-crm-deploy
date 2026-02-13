@@ -20,7 +20,7 @@ const apiIA = {
     }
   },
     
-export const getStats = () => api.get('/ia/stats');
+
 
 const iaService = {
 
