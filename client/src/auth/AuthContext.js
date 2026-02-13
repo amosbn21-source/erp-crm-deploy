@@ -101,9 +101,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       // Vérifier le token avec le backend
-      const response = await axios.get('/api/auth/verify', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.get('/auth/verify')
 
       console.log('✅ Vérification token:', response.data);
 
@@ -115,10 +113,10 @@ export const AuthProvider = ({ children }) => {
         setPermissions(userPermissions);
         
         // Configurer axios pour les requêtes futures
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        axios.defaults.headers.common['horization'] = `Bearer ${token}`;
       } else {
         // Token invalide, nettoyer
-        localStorage.removeItem('authToken');
+        localStorage.removeItem('hToken');
         localStorage.removeItem('user');
       }
     } catch (err) {
@@ -126,7 +124,7 @@ export const AuthProvider = ({ children }) => {
       
       // Fallback: utiliser le cache
       const savedUser = localStorage.getItem('user');
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem('hToken');
       
       if (savedUser && token) {
         const userData = JSON.parse(savedUser);
@@ -231,7 +229,7 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       // Appeler l'API logout si disponible
-      await axios.post('/api/auth/logout');
+      await api.post('/auth/logout');
     } catch (err) {
       console.log('Logout API non disponible, déconnexion locale');
     } finally {
