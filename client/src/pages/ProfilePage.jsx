@@ -645,7 +645,7 @@ export default function ProfilePage() {
       setLoading(true);
       setFacebookOAuth(prev => ({ ...prev, currentStep: 1 }));
       
-      const initResponse = await secureGet('/api/facebook/oauth/init');
+      const initResponse = await secureGet('/facebook/oauth/init');
       if (!initResponse.data?.success) throw new Error('Init failed');
 
       const authWindow = window.open(
@@ -662,7 +662,7 @@ export default function ProfilePage() {
       const pollInterval = setInterval(async () => {
         try {
           // Utiliser le STATE (pas sessionId) pour vérifier
-          const checkResponse = await secureGet(`/api/facebook/oauth/check/${initResponse.data.state}`);
+          const checkResponse = await secureGet(`/facebook/oauth/check/${initResponse.data.state}`);
           
           if (checkResponse.data?.success && checkResponse.data?.ready) {
             clearInterval(pollInterval);
@@ -820,7 +820,7 @@ export default function ProfilePage() {
       });
       
       // 2. Créer le compte
-      const response = await securePost('/api/webhook-accounts', accountPayload);
+      const response = await securePost('/webhook-accounts', accountPayload);
       
       if (!response.data?.success) {
         throw new Error(response.data?.error || 'Erreur création');
@@ -830,7 +830,7 @@ export default function ProfilePage() {
       console.log('✅ Compte créé ID:', newAccountId);
       
       // 3. Créer le mapping GLOBAL immédiatement (pour que le webhook fonctionne)
-      await securePost('/api/facebook/mapping', {
+      await securePost('/facebook/mapping', {
         page_id: selectedPage.id,
         user_id: userId,
         schema_name: schemaName,
@@ -1131,7 +1131,7 @@ export default function ProfilePage() {
   // Fonction pour exporter les logs
   const exportLogs = async () => {
     try {
-      const response = await secureGet('/api/webhook-logs/export', {
+      const response = await secureGet('/webhook-logs/export', {
         responseType: 'blob'
       });
       
@@ -1157,7 +1157,7 @@ export default function ProfilePage() {
     }
 
     try {
-      await secureDelete('/api/webhook-logs');
+      await secureDelete('/webhook-logs');
       setWebhookLogs([]);
       setTotalLogs(0);
       enqueueSnackbar('Logs effacés avec succès', { variant: 'success' });
@@ -1231,7 +1231,7 @@ export default function ProfilePage() {
   const fetchWebhookAccounts = async () => {
     try {
       setLoadingWebhooks(true);
-      const response = await secureGet('/api/webhook-accounts');
+      const response = await secureGet('/webhook-accounts');
       
       if (response.data && response.data.data) {
         const accounts = Array.isArray(response.data.data) ? response.data.data : [];
@@ -1313,7 +1313,7 @@ export default function ProfilePage() {
   const fetchFacebookPages = async (accessToken) => {
     try {
       setLoading(true);
-      const response = await securePost('/api/facebook/pages', {
+      const response = await securePost('/facebook/pages', {
         access_token: accessToken
       });
       
@@ -1333,7 +1333,7 @@ export default function ProfilePage() {
   const fetchStats = async () => {
     try {
       setLoadingStats(true);
-      const response = await secureGet('/api/users/me/stats');
+      const response = await secureGet('/users/me/stats');
       
       if (response.data) {
         setStats({
@@ -1366,7 +1366,7 @@ export default function ProfilePage() {
   const fetchAIStats = async () => {
     try {
       setLoadingAIStats(true);
-      const response = await secureGet('/api/ia/stats');
+      const response = await secureGet('/ia/stats');
       
       if (response.data && response.data.success) {
         setAiStats({
@@ -1396,7 +1396,7 @@ export default function ProfilePage() {
   // Fonction pour récupérer les paramètres automation
   const fetchAutomationSettings = async () => {
     try {
-      const response = await secureGet('/api/automation/settings');
+      const response = await secureGet('/automation/settings');
       if (response.data) {
         setAutomationSettings({
           autoResponder: response.data.autoResponder !== false,
@@ -1417,7 +1417,7 @@ export default function ProfilePage() {
   // Fonction pour récupérer les paramètres IA
   const fetchAISettings = async () => {
     try {
-      const response = await secureGet('/api/ia/settings');
+      const response = await secureGet('/ia/settings');
       if (response.data && response.data.success) {
         setAiSettings({
           enabled: response.data.enabled !== false,
@@ -1438,7 +1438,7 @@ export default function ProfilePage() {
   // Fonction pour récupérer la configuration webhook
   const fetchWebhookConfig = async () => {
     try {
-      const response = await secureGet('/api/webhooks/config');
+      const response = await secureGet('/webhooks/config');
       if (response.data && response.data.success) {
         setWebhookConfig({
           ai_webhook_url: response.data.ai_webhook_url || '',
@@ -1457,7 +1457,7 @@ export default function ProfilePage() {
   const fetchClients = async () => {
     try {
       setLoadingClients(true);
-      const response = await secureGet('/api/agence/clients');
+      const response = await secureGet('/agence/clients');
       if (response.data) {
         setClients(response.data);
       }
@@ -1829,7 +1829,7 @@ export default function ProfilePage() {
       }
       
       // Envoyer la requête
-      const response = await securePost('/api/webhook-accounts', accountData);
+      const response = await securePost('/webhook-accounts', accountData);
       
       if (response.data && response.data.success) {
         // Mettre à jour la liste des comptes
@@ -1975,7 +1975,7 @@ export default function ProfilePage() {
   const handleToggleAutomation = async () => {
     try {
       const newState = !stats.automationEnabled;
-      const response = await securePost('/api/automation/toggle', { enabled: newState });
+      const response = await securePost('/automation/toggle', { enabled: newState });
       
       if (response.data) {
         setStats(prev => ({ ...prev, automationEnabled: newState }));
@@ -1993,7 +1993,7 @@ export default function ProfilePage() {
   const handleSaveAutomationSettings = async () => {
     try {
       setLoading(true);
-      const response = await securePost('/api/automation/settings', automationSettings);
+      const response = await securePost('/automation/settings', automationSettings);
       
       if (response.data) {
         enqueueSnackbar('Paramètres automation sauvegardés', { variant: 'success' });
@@ -2009,7 +2009,7 @@ export default function ProfilePage() {
   const handleSaveAISettings = async () => {
     try {
       setLoading(true);
-      const response = await securePost('/api/ia/settings', aiSettings);
+      const response = await securePost('/ia/settings', aiSettings);
       
       if (response.data && response.data.success) {
         enqueueSnackbar('Paramètres IA sauvegardés', { variant: 'success' });
@@ -2025,7 +2025,7 @@ export default function ProfilePage() {
   const handleSaveWebhookConfig = async () => {
     try {
       setLoading(true);
-      const response = await securePost('/api/webhook/config', webhookConfig);
+      const response = await securePost('/webhook/config', webhookConfig);
       
       if (response.data && response.data.success) {
         enqueueSnackbar('Configuration webhook sauvegardée', { variant: 'success' });
@@ -2181,12 +2181,12 @@ export default function ProfilePage() {
       };
       
       // Envoyer la requête
-      const response = await securePost('/api/agence/invitations', invitationPayload);
+      const response = await securePost('/agence/invitations', invitationPayload);
       
       if (response.data && response.data.success) {
         if (invitationData.invitation_method === 'email') {
           // Envoyer l'email
-          await securePost('/api/agence/send-invitation', {
+          await securePost('/agence/send-invitation', {
             invitation_id: response.data.invitation_id,
             client_email: invitationData.client_email
           });
