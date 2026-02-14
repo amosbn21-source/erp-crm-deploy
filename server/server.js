@@ -2824,7 +2824,7 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
           <meta property="og:type" content="website" />
           <meta property="og:url" content="https://erp-crm-deploy.onrender.com/" />
           <meta property="og:description" content="API pour l'application ERP CRM" />
-          <meta property="og:image" content="https://unsplash.com/fr/photos/petite-cabane-sur-une-colline-enneigee-sous-un-ciel-pale-XGxp1rvTVag" />
+          <meta property="og:image" content="https://placekitten.com/600/315" />
           <meta property="fb:app_id" content="1577080080294850" />
         </head>
         <body>
