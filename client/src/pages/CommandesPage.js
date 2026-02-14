@@ -384,7 +384,8 @@ export default function CommandesPage() {
           console.log('📄 Réponse PDF:', pdfRes.data);
           
           if (pdfRes.data && pdfRes.data.pdfUrl) {
-            const fullUrl = `http://localhost:5000${pdfRes.data.pdfUrl}`;
+            const baseUrl = (process.env.REACT_APP_API_URL || '').replace(/\/$/, '');
+            const fullUrl = `${baseUrl}${pdfRes.data.pdfUrl}`;
             console.log('🔗 URL PDF complète:', fullUrl);
             
             showNotif(`PDF prêt! Ouverture...`, 'success');
