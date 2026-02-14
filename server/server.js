@@ -6549,11 +6549,10 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
         ]);
         
         // Dernière activité
-        // Dernière activité
         const lastActivityResult = await pool.query(`
           SELECT MAX(created_at) as last_activity FROM "${userSchema}".messages
           UNION ALL
-          SELECT MAX(derniere_interaction) as last_activity FROM "${userSchema}".conversations   // ← correction
+          SELECT MAX(derniere_interaction) as last_activity FROM "${userSchema}".conversations
           UNION ALL
           SELECT MAX(created_at) as last_activity FROM "${userSchema}".webhook_accounts
         `);
