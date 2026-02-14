@@ -2824,7 +2824,8 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
           <meta property="og:type" content="website" />
           <meta property="og:url" content="https://erp-crm-deploy.onrender.com/" />
           <meta property="og:description" content="API pour l'application ERP CRM" />
-          <meta property="og:image" content="https://scontent.fdkr6-1.fna.fbcdn.net/v/t39.2081-0/635003395_1599797168023141_885544723680786859_n.jpg?_nc_cat=104&ccb=1-7&_nc_sid=03cc09&_nc_eui2=AeFVCvkJ_7gCYTTS9xRq5DtPmd_I0bJRUh2Z38jRslFSHfZ8BvjZSEBsTy-sbT93aGYxOfzIaYhDmv59yQ5HI14V&_nc_ohc=4PlFVA_kxWYQ7kNvwHyvx1p&_nc_oc=AdkKn7g-_gEx56U0B4bIWtviNPK41oDOw4_9OY_esmJM5J2dw_HYbRVdyHk5PeHCxkM&_nc_zt=23&_nc_ht=scontent.fdkr6-1.fna&_nc_gid=C5y6d1ao1bXa1dwBHGljQA&oh=00_Afs7oZE5hfCAqbZUqpPH-x4EwDgH4gkV5Fwjt47RLAK_Kg&oe=699648F0" />
+          <meta property="og:image" content="https://i.imgur.com/votre_image.jpg" />
+          <meta property="fb:app_id" content="1577080080294850" />
         </head>
         <body>
           <h1>ERP CRM API - Service opérationnel</h1>
@@ -2832,7 +2833,7 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
         </html>
       `;
       res.status(200).send(html);
-    });
+    })
 
     /**
     * Route 1: Générer l'URL OAuth pour un utilisateur spécifique
