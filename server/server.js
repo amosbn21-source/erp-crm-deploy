@@ -2824,7 +2824,7 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
           <meta property="og:type" content="website" />
           <meta property="og:url" content="https://erp-crm-deploy.onrender.com/" />
           <meta property="og:description" content="API pour l'application ERP CRM" />
-          <meta property="og:image" content="https://imgur.com/gallery/ueIdxJ7" />
+          <meta property="og:image" content="https://i.imgur.com/Xp1YFmn.jpeg" />
         </head>
         <body>
           <h1>ERP CRM API - Service opérationnel</h1>
