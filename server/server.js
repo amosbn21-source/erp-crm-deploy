@@ -3754,6 +3754,7 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
     });
 
     app.get('/api/facebook/oauth/check/:state', async (req, res) => {
+      console.log('🚦 ROUTE CHECK ATTEINTE avec state:', req.params.state);
       try {
         const { state } = req.params;
         console.log('🔍 Check OAuth state:', state);
