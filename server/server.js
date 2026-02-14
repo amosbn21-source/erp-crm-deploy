@@ -2814,6 +2814,11 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
 
     // ==================== ROUTES OAUTH POUR TOUS LES UTILISATEURS ====================
 
+    // Route racine pour la validation Facebook
+    app.get('/', (req, res) => {
+      res.status(200).send('ERP CRM API - Service opérationnel');
+    });
+
     /**
     * Route 1: Générer l'URL OAuth pour un utilisateur spécifique
     * Cette route est sécurisée et lie l'OAuth à l'utilisateur connecté
