@@ -2858,6 +2858,7 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
         // Construire URL
         const redirectUri = process.env.REDIRECT_URI || `${req.protocol}://${req.get('host')}/api/facebook/oauth/callback`;
         const scope = 'pages_show_list,pages_messaging';
+        console.log('🔗 Redirect URI utilisée:', redirectUri);
         
         const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?` +
           `client_id=${FACEBOOK_APP_ID}` +
