@@ -2856,7 +2856,10 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
         console.log('📊 Nombre total de states:', global.oauthStates.size);
         
         // Construire URL
-        const redirectUri = process.env.REDIRECT_URI || `${req.protocol}://${req.get('host')}/api/facebook/oauth/callback`;
+        const redirectUri = process.env.REDIRECT_URI || 
+          (process.env.NODE_ENV === 'production' 
+            ? `https://${req.get('host')}/api/facebook/oauth/callback`
+            : `${req.protocol}://${req.get('host')}/api/facebook/oauth/callback`);
         const scope = 'pages_show_list,pages_messaging';
         console.log('🔗 Redirect URI utilisée:', redirectUri);
         
