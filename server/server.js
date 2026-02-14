@@ -2816,7 +2816,22 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
 
     // Route racine pour la validation Facebook
     app.get('/', (req, res) => {
-      res.status(200).send('ERP CRM API - Service opérationnel');
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta property="https://imgur.com/gallery/ueIdxJ7" content="ERP CRM API" />
+          <meta property="og:type" content="website" />
+          <meta property="og:url" content="https://erp-crm-deploy.onrender.com/" />
+          <meta property="og:description" content="API pour l'application ERP CRM" />
+          <meta property="og:image" content="https://erp-crm-deploy.onrender.com/logo.png" />
+        </head>
+        <body>
+          <h1>ERP CRM API - Service opérationnel</h1>
+        </body>
+        </html>
+      `;
+      res.status(200).send(html);
     });
 
     /**
