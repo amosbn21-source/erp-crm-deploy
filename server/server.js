@@ -2820,11 +2820,11 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
         <!DOCTYPE html>
         <html>
         <head>
-          <meta property="https://imgur.com/gallery/ueIdxJ7" content="ERP CRM API" />
+          <meta property="og:title" content="ERP CRM API" />
           <meta property="og:type" content="website" />
           <meta property="og:url" content="https://erp-crm-deploy.onrender.com/" />
           <meta property="og:description" content="API pour l'application ERP CRM" />
-          <meta property="og:image" content="https://erp-crm-deploy.onrender.com/logo.png" />
+          <meta property="og:image" content="https://imgur.com/gallery/ueIdxJ7" />
         </head>
         <body>
           <h1>ERP CRM API - Service opérationnel</h1>
