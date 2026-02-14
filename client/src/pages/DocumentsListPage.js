@@ -1,4 +1,4 @@
-// pages/DocumentsListPage.js - VERSION CORRIGÉE
+// pages/DocumentsListPage.js - VERSION CORRIGÉE (URL dynamique)
 import React, { useState, useEffect } from 'react';
 import {
   Table, TableBody, TableCell, TableHead, TableRow,
@@ -8,17 +8,15 @@ import {
   FormControl, InputLabel, Alert, CircularProgress,
   Card, CardContent, Grid
 } from '@mui/material';
-// En haut du fichier avec les autres imports :
 import {
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
   Visibility as ViewIcon,
   Download as DownloadIcon,
-  Description as DocumentIcon, // <-- Déjà importé
+  Description as DocumentIcon,
   Receipt as InvoiceIcon,
-  Description as QuoteIcon,
-  Description // <-- Ajoutez cette ligne
+  Description as QuoteIcon
 } from '@mui/icons-material';
 import { secureGet, securePost, secureDelete, securePut } from '../services/api';
 import { format } from 'date-fns';
@@ -38,6 +36,9 @@ export default function DocumentsListPage() {
     lignes: [{ description: '', quantite: 1, prix_unitaire: 0 }]
   });
 
+  // URL de base de l'API (lue depuis les variables d'environnement)
+  const baseUrl = (process.env.REACT_APP_API_URL || '').replace(/\/$/, '');
+
   // Charger les documents
   const fetchDocuments = async () => {
     setLoading(true);
@@ -45,41 +46,37 @@ export default function DocumentsListPage() {
         const res = await secureGet('/documents');
         console.log('📄 Réponse API documents complète:', res);
         
-        // ✅ EXTRACTION CORRECTE DES DONNÉES
         let documentsData = [];
         
         if (res.data && res.data.success === true) {
-        if (Array.isArray(res.data.data)) {
+          if (Array.isArray(res.data.data)) {
             documentsData = res.data.data;
             console.log('📄 Données extraites (tableau):', documentsData.length);
-        } else {
+          } else {
             console.warn('⚠️ res.data.data n\'est pas un tableau:', res.data.data);
-        }
+          }
         } else {
-        console.warn('⚠️ Réponse API non standard:', res.data);
-        // Fallback: essayer res.data directement
-        if (Array.isArray(res.data)) {
+          console.warn('⚠️ Réponse API non standard:', res.data);
+          if (Array.isArray(res.data)) {
             documentsData = res.data;
             console.log('📄 Fallback: données extraites de res.data:', documentsData.length);
-        }
+          }
         }
         
-        // ✅ NORMALISER LES DONNÉES CLIENTS
         const normalizedDocs = documentsData.map(doc => ({
-        id: doc.id,
-        reference: doc.reference || `DOC-${doc.id}`,
-        type: doc.type || 'devis',
-        statut: doc.statut || 'brouillon',
-        // ✅ FORCER LES CHAMPS CLIENTS AVEC VALEURS PAR DÉFAUT
-        client_nom: doc.client_nom || 'Client non spécifié',
-        client_email: doc.client_email || '',
-        client_adresse: doc.client_adresse || '',
-        date_emission: doc.date_emission || doc.created_at,
-        total_ht: doc.total_ht || 0,
-        total_tva: doc.total_tva || 0,
-        total_ttc: doc.total_ttc || 0,
-        pdf_filename: doc.pdf_filename,
-        created_at: doc.created_at
+          id: doc.id,
+          reference: doc.reference || `DOC-${doc.id}`,
+          type: doc.type || 'devis',
+          statut: doc.statut || 'brouillon',
+          client_nom: doc.client_nom || 'Client non spécifié',
+          client_email: doc.client_email || '',
+          client_adresse: doc.client_adresse || '',
+          date_emission: doc.date_emission || doc.created_at,
+          total_ht: doc.total_ht || 0,
+          total_tva: doc.total_tva || 0,
+          total_ttc: doc.total_ttc || 0,
+          pdf_filename: doc.pdf_filename,
+          created_at: doc.created_at
         }));
         
         console.log(`📄 ${normalizedDocs.length} document(s) normalisé(s)`);
@@ -94,7 +91,7 @@ export default function DocumentsListPage() {
     } finally {
         setLoading(false);
     }
-    };
+  };
 
   useEffect(() => {
     fetchDocuments();
@@ -126,8 +123,8 @@ export default function DocumentsListPage() {
       const res = await securePost(`/documents-puppeteer/${documentId}/generate-pdf-puppeteer`);
       
       if (res.data && res.data.pdfUrl) {
-        // Ouvrir le PDF dans un nouvel onglet
-        const pdfUrl = `http://localhost:5000${res.data.pdfUrl}`;
+        // Construire l'URL complète avec la base de l'API
+        const pdfUrl = `${baseUrl}${res.data.pdfUrl}`;
         window.open(pdfUrl, '_blank');
       }
     } catch (err) {
@@ -303,7 +300,7 @@ export default function DocumentsListPage() {
                           size="small"
                           title="Télécharger PDF"
                           onClick={() => window.open(
-                            `http://localhost:5000/uploads/${doc.pdf_filename}`,
+                            `${baseUrl}/uploads/${doc.pdf_filename}`,
                             '_blank'
                           )}
                         >
@@ -315,7 +312,7 @@ export default function DocumentsListPage() {
                         title="Générer PDF"
                         onClick={() => handleGeneratePDF(doc.id)}
                       >
-                        <Description fontSize="small" />
+                        <DocumentIcon fontSize="small" />
                       </IconButton>
                     </Stack>
                   </TableCell>
