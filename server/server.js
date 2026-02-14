@@ -2856,7 +2856,7 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
         console.log('📊 Nombre total de states:', global.oauthStates.size);
         
         // Construire URL
-        const redirectUri = `${req.protocol}://${req.get('host')}/api/facebook/oauth/callback`;
+        const redirectUri = process.env.REDIRECT_URI || `${req.protocol}://${req.get('host')}/api/facebook/oauth/callback`;
         const scope = 'pages_show_list,pages_messaging';
         
         const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?` +
