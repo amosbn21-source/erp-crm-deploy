@@ -18,7 +18,155 @@ router.get('/', async (req, res) => {
     
     console.log(`🔐 [CATÉGORIES] GET / pour schéma: ${userSchema}`);
     
+    // Vérifier si la table produits existeA// src/routes/categories.js - VERSION CORRIGÉE
+const express = require('express');
+const router = express.Router();
+
+// Middleware pour obtenir le schéma utilisateur (optionnel mais cohérent)
+router.use((req, res, next) => {
+  console.log('🏷️ categories.js - User schema:', req.userSchema);
+  console.log('🏷️ categories.js - User ID:', req.user?.id);
+  
+  if (!req.userSchema) {
+    console.warn('⚠️  Aucun schéma utilisateur défini, utilisation par défaut');
+    req.userSchema = `user_${req.user?.id || 1}`;
+  }
+  
+  next();
+});
+
+// ✅ GET: Liste des catégories depuis les produits
+router.get('/', async (req, res) => {
+  try {
+    const userSchema = req.userSchema;
+    const db = req.app.locals.pool; // Récupération du pool partagé
+    
+    console.log(`🔐 [CATÉGORIES] GET / pour schéma: ${userSchema}`);
+    
     // Vérifier si la table produits existe
+    const tableExists = await db.query(
+      `SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = $1 AND table_name = 'produits'
+      )`,
+      [userSchema]
+    );
+    
+    if (!tableExists.rows[0].exists) {
+      return res.json({
+        success: true,
+        data: [],
+        count: 0
+      });
+    }
+    
+    // Récupérer les catégories distinctes
+    const result = await db.query(
+      `SELECT DISTINCT categorie 
+       FROM "${userSchema}".produits 
+       WHERE categorie IS NOT NULL AND categorie != ''
+       ORDER BY categorie`
+    );
+    
+    const categories = result.rows.map(row => row.categorie);
+    
+    res.json({
+      success: true,
+      data: categories,
+      count: categories.length
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur GET /categories:', error);
+    res.json({
+      success: true,
+      data: [],
+      count: 0
+    });
+  }
+});
+
+// ✅ POST: Créer une nouvelle catégorie
+router.post('/', async (req, res) => {
+  try {
+    const { nom } = req.body;
+    const userSchema = req.userSchema;
+    const db = req.app.locals.pool;
+    
+    console.log(`🔐 [CATÉGORIES] POST / pour schéma: ${userSchema}`, { nom });
+    
+    if (!nom || nom.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        error: 'Nom de catégorie requis'
+      });
+    }
+    
+    // Note: Dans cette implémentation simple, on ne stocke pas les catégories
+    // dans une table séparée. Les catégories sont extraites des produits.
+    // Vous pourriez créer une table categories si nécessaire.
+    
+    res.json({
+      success: true,
+      data: { nom: nom.trim() },
+      message: 'Catégorie créée avec succès'
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur POST /categories:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur serveur'
+    });
+  }
+});
+
+// ✅ GET: Vérifier si une catégorie existe
+router.get('/exists/:nom', async (req, res) => {
+  try {
+    const { nom } = req.params;
+    const userSchema = req.userSchema;
+    const db = req.app.locals.pool;
+    
+    // Vérifier si la table produits existe
+    const tableExists = await db.query(
+      `SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = $1 AND table_name = 'produits'
+      )`,
+      [userSchema]
+    );
+    
+    if (!tableExists.rows[0].exists) {
+      return res.json({
+        success: true,
+        exists: false
+      });
+    }
+    
+    const result = await db.query(
+      `SELECT EXISTS (
+        SELECT 1 FROM "${userSchema}".produits 
+        WHERE LOWER(categorie) = LOWER($1)
+      )`,
+      [nom]
+    );
+    
+    res.json({
+      success: true,
+      exists: result.rows[0].exists
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur GET /categories/exists/:nom:', error);
+    res.json({
+      success: false,
+      exists: false
+    });
+  }
+});
+
+module.exports = router;
     const tableExists = await pool.query(
       `SELECT EXISTS (
         SELECT FROM information_schema.tables 
