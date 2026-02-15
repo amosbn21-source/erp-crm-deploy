@@ -138,7 +138,7 @@ const LoginPage = () => {
             </Button>
 
             <Typography variant="body2" color="text.secondary" align="center">
-              Pour les tests, utilisez : admin@entreprise.com / password123
+              
             </Typography>
           </form>
         </Paper>
