@@ -159,9 +159,14 @@ export default function ProduitsPage() {
   const [stock, setStock] = useState('');
   const [codeBarres, setCodeBarres] = useState('');
   const [categorie, setCategorie] = useState('');
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
-  const [currentEditingImage, setCurrentEditingImage] = useState(null);
+  // Remplacer les anciens états d'image unique
+  const [imageFiles, setImageFiles] = useState([]);         // Fichiers sélectionnés
+  const [imagePreviews, setImagePreviews] = useState([]);   // URLs d'aperçu
+  const [existingImages, setExistingImages] = useState([]); // Noms des images déjà en base (pour édition)
+  
+  // État pour le modal de détails
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [openDetailsModal, setOpenDetailsModal] = useState(false);
   
   // Filtres et recherche
   const [filterCategorie, setFilterCategorie] = useState(null);
@@ -330,12 +335,34 @@ export default function ProduitsPage() {
   const handleChooseFile = () => fileInputRef.current?.click();
   
   const handleFileChange = (e) => {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-    
-    if (imagePreview) URL.revokeObjectURL(imagePreview);
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+  
+    // Limiter à 5 images au total (existantes + nouvelles)
+    const totalAfterAdd = imageFiles.length + existingImages.length + files.length;
+    if (totalAfterAdd > 5) {
+      showNotif('Vous ne pouvez pas ajouter plus de 5 images', 'warning');
+      return;
+    }
+  
+    // Créer les aperçus
+    const newPreviews = files.map(file => URL.createObjectURL(file));
+    setImageFiles(prev => [...prev, ...files]);
+    setImagePreviews(prev => [...prev, ...newPreviews]);
+  
+    // Réinitialiser l'input pour permettre de resélectionner les mêmes fichiers
+    e.target.value = '';
+  };
+  
+  const removeImage = (index) => {
+    URL.revokeObjectURL(imagePreviews[index]);
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
+    setImageFiles(prev => prev.filter((_, i) => i !== index));
+  };
+  
+  const removeExistingImage = (imageName) => {
+    setExistingImages(prev => prev.filter(img => img !== imageName));
+    // Optionnel : on peut stocker les images à supprimer dans un état séparé pour l'envoyer au serveur
   };
   
   const clearFile = () => {
@@ -347,7 +374,6 @@ export default function ProduitsPage() {
 
   // ==================== GESTION DU FORMULAIRE ====================
 
-  // Réinitialise le formulaire
   const resetForm = () => {
     setEditingProduit(null);
     setNom('');
@@ -356,8 +382,13 @@ export default function ProduitsPage() {
     setStock('');
     setCodeBarres('');
     setCategorie('');
-    setCurrentEditingImage(null);
-    clearFile();
+    setCurrentEditingImage(null);  // à supprimer si vous ne l'utilisez plus
+    // Nettoyer les états d'images multiples
+    imagePreviews.forEach(URL.revokeObjectURL);
+    setImageFiles([]);
+    setImagePreviews([]);
+    setExistingImages([]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   // Ouvre le dialogue pour ajouter un produit
@@ -375,8 +406,18 @@ export default function ProduitsPage() {
     setStock(String(produit.stock ?? ''));
     setCodeBarres(produit.codeBarres || '');
     setCategorie(produit.categorie || '');
-    setCurrentEditingImage(produit.image || null);
-    clearFile();
+    
+    // Charger les images existantes
+    let imagesArray = [];
+    if (produit.images && Array.isArray(produit.images)) {
+      imagesArray = produit.images;
+    } else if (produit.image) {
+      // Si le backend utilise un seul champ image, on le transforme en tableau
+      imagesArray = [produit.image];
+    }
+    setExistingImages(imagesArray);
+    
+    clearFile(); // nettoie les éventuelles previews
     setOpenFormDialog(true);
   };
 
@@ -408,9 +449,10 @@ export default function ProduitsPage() {
       form.append('codeBarres', codeBarres.trim() || '');
       form.append('categorie', catValue.trim());
       
-      if (imageFile) {
-        form.append('image', imageFile);
-      }
+      // Ajouter chaque fichier
+      imageFiles.forEach(file => {
+        form.append('images', file);  // le backend doit accepter 'images' comme champ multiple
+      });
       
       const res = await secureUpload('/produits', form,{
         headers: { 'Content-Type': 'multipart/form-data',
@@ -419,13 +461,11 @@ export default function ProduitsPage() {
 
       // Extraction sécurisée du produit
       const newProduct = res.data?.data || res.data;
-      
-      
       setProduits(prev => [res.data, ...prev]);
       
       // Ajoute la catégorie si elle n'existe pas
-      if (!categories.includes(catValue.trim())) {
-        setCategories(prev => [...prev, catValue.trim()]);
+      if (!categories.includes(categorie.trim())) {
+        setCategories(prev => [...prev, categorie.trim()]);
       }
       
       handleCloseFormDialog();
@@ -466,9 +506,13 @@ export default function ProduitsPage() {
       form.append('codeBarres', codeBarres.trim() || '');
       form.append('categorie', catValue.trim());
       
-      if (imageFile) {
-        form.append('image', imageFile);
-      }
+      // Nouvelles images
+      imageFiles.forEach(file => {
+        form.append('images', file);
+      });
+
+      // Indiquer les images à conserver (optionnel, selon votre logique backend)
+      form.append('existingImages', JSON.stringify(existingImages));
       
       const res = await securePut(`/produits/${editingProduit.id}`, form, {
         headers: { 'Content-Type': 'multipart/form-data' }
@@ -476,14 +520,11 @@ export default function ProduitsPage() {
 
       // Extraction sécurisée
       const updatedProduct = res.data?.data || res.data;
-
-      
-      
-      setProduits(prev => prev.map(p => p.id === editingProduit.id ? res.data : p));
+      setProduits(prev => prev.map(p => p.id === editingProduit.id ? updatedProduct : p));
       
       // Ajoute la catégorie si elle n'existe pas
-      if (!categories.includes(catValue.trim())) {
-        setCategories(prev => [...prev, catValue.trim()]);
+      if (!categories.includes(categorie.trim())) {
+        setCategories(prev => [...prev, categorie.trim()]);
       }
       
       handleCloseFormDialog();
@@ -1079,74 +1120,71 @@ export default function ProduitsPage() {
               <Grid item xs={12}>
                 <Box>
                   <Typography variant="subtitle2" gutterBottom>
-                    Image du produit
+                    Images du produit (max 5)
                   </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-                    <input 
-                      ref={fileInputRef} 
-                      type="file" 
-                      accept="image/*" 
-                      style={{ display: 'none' }} 
-                      onChange={handleFileChange}
-                      disabled={loading}
-                    />
-                    <Button 
-                      variant="outlined" 
-                      onClick={handleChooseFile}
-                      startIcon={<ImageIcon />}
-                      disabled={loading}
-                    >
-                      Choisir une image
-                    </Button>
-                    
-                    {/* Aperçu de l'image */}
-                    {imagePreview ? (
-                      <Box sx={{ position: 'relative' }}>
-                        <img 
-                          src={imagePreview} 
-                          alt="Aperçu" 
-                          style={{ 
-                            width: 100, 
-                            height: 100, 
-                            objectFit: 'cover', 
-                            borderRadius: 4 
-                          }} 
-                        />
-                        <IconButton
-                          size="small"
-                          onClick={clearFile}
-                          sx={{ 
-                            position: 'absolute', 
-                            top: -8, 
-                            right: -8,
-                            bgcolor: 'background.paper'
-                          }}
-                        >
-                          <CloseIcon fontSize="small" />
-                        </IconButton>
-                      </Box>
-                    ) : editingProduit && currentEditingImage ? (
-                      <Box sx={{ position: 'relative' }}>
-                        <img
-                          src={buildImageUrl(currentEditingImage)}
-                          alt="Produit"
-                          style={{ 
-                            width: 100, 
-                            height: 100, 
-                            objectFit: 'cover', 
-                            borderRadius: 4 
-                          }}
-                          onError={handleImgError}
-                        />
-                        <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                          Image actuelle
-                        </Typography>
-                      </Box>
-                    ) : null}
-                  </Box>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    style={{ display: 'none' }}
+                    onChange={handleFileChange}
+                    disabled={loading}
+                  />
+                  <Button
+                    variant="outlined"
+                    onClick={() => fileInputRef.current.click()}
+                    startIcon={<ImageIcon />}
+                    disabled={loading || imagePreviews.length + existingImages.length >= 5}
+                  >
+                    Ajouter des images
+                  </Button>
+              
+                  {/* Grille des aperçus */}
+                  <Grid container spacing={1} sx={{ mt: 2 }}>
+                    {/* Images déjà existantes (en édition) */}
+                    {existingImages.map((imgName, idx) => (
+                      <Grid item key={`existing-${idx}`}>
+                        <Box sx={{ position: 'relative' }}>
+                          <img
+                            src={buildImageUrl(imgName)}
+                            alt={`exist-${idx}`}
+                            style={{ width: 100, height: 100, objectFit: 'cover', borderRadius: 4 }}
+                            onError={handleImgError}
+                          />
+                          <IconButton
+                            size="small"
+                            onClick={() => removeExistingImage(imgName)}
+                            sx={{ position: 'absolute', top: -8, right: -8, bgcolor: 'background.paper' }}
+                          >
+                            <CloseIcon fontSize="small" />
+                          </IconButton>
+                        </Box>
+                      </Grid>
+                    ))}
+              
+                    {/* Nouvelles images sélectionnées */}
+                    {imagePreviews.map((preview, idx) => (
+                      <Grid item key={`preview-${idx}`}>
+                        <Box sx={{ position: 'relative' }}>
+                          <img
+                            src={preview}
+                            alt={`preview-${idx}`}
+                            style={{ width: 100, height: 100, objectFit: 'cover', borderRadius: 4 }}
+                          />
+                          <IconButton
+                            size="small"
+                            onClick={() => removeImage(idx)}
+                            sx={{ position: 'absolute', top: -8, right: -8, bgcolor: 'background.paper' }}
+                          >
+                            <CloseIcon fontSize="small" />
+                          </IconButton>
+                        </Box>
+                      </Grid>
+                    ))}
+                  </Grid>
                 </Box>
               </Grid>
-            </Grid>
           </Stack>
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
