@@ -85,8 +85,6 @@ export default function CommandesPage() {
   const [date, setDate] = useState('');
   const [statut, setStatut] = useState('en attente');
   const [total, setTotal] = useState(0);
-  const [totalHT, setTotalHT] = useState(0);
-  const [tva, setTva] = useState(0);
   const [contactId, setContactId] = useState('');
   const [produitsSelectionnes, setProduitsSelectionnes] = useState([]);
   
@@ -110,22 +108,15 @@ export default function CommandesPage() {
       
       // ✅ CORRECTION : Normaliser les noms de propriétés snake_case → camelCase
       const safe = commandesData.map(cmd => {
-        // Normaliser les propriétés principales
         const normalizedCmd = {
           ...cmd,
-          // Propriétés du contact
           contactNom: cmd.contact_nom || cmd.contactNom || '',
           contactPrenom: cmd.contact_prenom || cmd.contactPrenom || '',
           contactEmail: cmd.contact_email || cmd.contactEmail || '',
           contactTelephone: cmd.contact_telephone || cmd.contactTelephone || '',
           contactId: cmd.contact_id || cmd.contactId,
-          // Propriétés financières
-          totalHT: cmd.total_ht || cmd.totalHT || 0,
-          total: cmd.total || 0,
-          tva: cmd.tva || 0,
-          // Date
+          total: cmd.total_ht || cmd.total || 0,            // ← on utilise total_ht comme total
           date: cmd.date || cmd.created_at,
-          // Assurer que produits est un tableau
           produits: Array.isArray(cmd.produits) ? cmd.produits.map(p => ({
             ...p,
             produitId: p.produit_id || p.produitId,
@@ -134,16 +125,6 @@ export default function CommandesPage() {
             sousTotal: p.sousTotal || (p.quantite * (p.prix_unitaire || p.prixUnitaire || 0))
           })) : []
         };
-        
-        // Calculer totalHT et TVA si non fournis
-        if (!normalizedCmd.totalHT && normalizedCmd.produits.length > 0) {
-          const totalHT = normalizedCmd.produits.reduce((sum, p) => sum + (p.sousTotal || 0), 0);
-          const tva = totalHT * 0.20;
-          normalizedCmd.totalHT = totalHT;
-          normalizedCmd.tva = tva;
-          normalizedCmd.total = totalHT + tva;
-        }
-        
         return normalizedCmd;
       });
       
@@ -755,13 +736,8 @@ export default function CommandesPage() {
   };
 
   const calculerTotaux = (produitsList = produitsSelectionnes) => {
-    const totalHT = produitsList.reduce((sum, p) => sum + (p.quantite * p.prixUnitaire), 0);
-    const tva = totalHT * 0.20;
-    const totalTTC = totalHT + tva;
-    
-    setTotalHT(totalHT);
-    setTva(tva);
-    setTotal(totalTTC);
+    const total = produitsList.reduce((sum, p) => sum + (p.quantite * p.prixUnitaire), 0);
+    setTotal(total);
   };
 
   const handleSubmit = async () => {
@@ -786,9 +762,7 @@ export default function CommandesPage() {
       const commandeData = {
         date: new Date(date).toISOString(),
         statut,
-        total,
-        totalHT,
-        tva,
+        total,                    // ← total calculé sans TVA
         contactId,
         produits: produitsPourAPI
       };
@@ -1059,11 +1033,7 @@ export default function CommandesPage() {
                     <Typography fontWeight="bold" color="primary">
                       {formatCurrency(cmd.total)}
                     </Typography>
-                    {cmd.totalHT && (
-                      <Typography variant="caption" color="text.secondary" display="block">
-                        HT: {formatCurrency(cmd.totalHT)} + TVA: {formatCurrency(cmd.tva)}
-                      </Typography>
-                    )}
+                  </TableCell>
                   </TableCell>
                   <TableCell align="center">
                     <Stack direction="row" spacing={1} justifyContent="center">
@@ -1141,35 +1111,17 @@ export default function CommandesPage() {
                             </Paper>
                           </Grid>
 
-                          {/* Détails financiers */}
+                          {/* Détails financiers simplifiés */}
                           <Grid item xs={12} md={6}>
                             <Paper sx={{ p: 2 }}>
                               <Typography variant="subtitle1" gutterBottom fontWeight="bold">
                                 <MoneyIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                                Détails financiers
+                                Total de la commande
                               </Typography>
                               <Divider sx={{ mb: 2 }} />
-                              <Stack spacing={1}>
-                                <Box display="flex" justifyContent="space-between">
-                                  <Typography variant="body2">Total HT:</Typography>
-                                  <Typography variant="body2" fontWeight="bold">
-                                    {formatCurrency(cmd.totalHT || cmd.total * 0.8)}
-                                  </Typography>
-                                </Box>
-                                <Box display="flex" justifyContent="space-between">
-                                  <Typography variant="body2">TVA (20%):</Typography>
-                                  <Typography variant="body2" fontWeight="bold">
-                                    {formatCurrency(cmd.tva || cmd.total * 0.2)}
-                                  </Typography>
-                                </Box>
-                                <Divider />
-                                <Box display="flex" justifyContent="space-between">
-                                  <Typography variant="body1" fontWeight="bold">Total TTC:</Typography>
-                                  <Typography variant="h6" color="primary">
-                                    {formatCurrency(cmd.total)}
-                                  </Typography>
-                                </Box>
-                              </Stack>
+                              <Typography variant="h4" color="primary" align="center">
+                                {formatCurrency(cmd.total)}
+                              </Typography>
                             </Paper>
                           </Grid>
 
@@ -1572,44 +1524,32 @@ export default function CommandesPage() {
                     Résumé de la commande
                   </Typography>
                   <Grid container spacing={2}>
-                    <Grid item xs={12} md={6}>
-                      <Stack spacing={1}>
-                        <Box display="flex" justifyContent="space-between">
-                          <Typography variant="body2">Nombre de produits:</Typography>
-                          <Typography variant="body2" fontWeight="bold">
-                            {produitsSelectionnes.length}
-                          </Typography>
-                        </Box>
-                        <Box display="flex" justifyContent="space-between">
-                          <Typography variant="body2">Articles totaux:</Typography>
-                          <Typography variant="body2" fontWeight="bold">
-                            {produitsSelectionnes.reduce((sum, p) => sum + p.quantite, 0)}
-                          </Typography>
-                        </Box>
-                      </Stack>
+                    <Grid item xs={6}>
+                      <Typography variant="body2">Nombre de produits :</Typography>
                     </Grid>
-                    <Grid item xs={12} md={6}>
-                      <Stack spacing={1}>
-                        <Box display="flex" justifyContent="space-between">
-                          <Typography variant="body2">Total HT:</Typography>
-                          <Typography variant="body2" fontWeight="bold">
-                            {formatCurrency(totalHT)}
-                          </Typography>
-                        </Box>
-                        <Box display="flex" justifyContent="space-between">
-                          <Typography variant="body2">TVA (20%):</Typography>
-                          <Typography variant="body2" fontWeight="bold">
-                            {formatCurrency(tva)}
-                          </Typography>
-                        </Box>
-                        <Divider />
-                        <Box display="flex" justifyContent="space-between">
-                          <Typography variant="h6">Total TTC:</Typography>
-                          <Typography variant="h5" color="primary">
-                            {formatCurrency(total)}
-                          </Typography>
-                        </Box>
-                      </Stack>
+                    <Grid item xs={6} textAlign="right">
+                      <Typography variant="body2" fontWeight="bold">
+                        {produitsSelectionnes.length}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Typography variant="body2">Articles totaux :</Typography>
+                    </Grid>
+                    <Grid item xs={6} textAlign="right">
+                      <Typography variant="body2" fontWeight="bold">
+                        {produitsSelectionnes.reduce((sum, p) => sum + p.quantite, 0)}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Divider />
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Typography variant="h6">Total :</Typography>
+                    </Grid>
+                    <Grid item xs={6} textAlign="right">
+                      <Typography variant="h5" color="primary">
+                        {formatCurrency(total)}
+                      </Typography>
                     </Grid>
                   </Grid>
                 </Paper>
