@@ -95,9 +95,31 @@ export default function CommandesPage() {
     setNotif({ open: true, message, type });
   }, []);
 
+  // ==================== ÉTATS FILTRES ====================
+  const [filters, setFilters] = useState({
+    dateDebut: '',
+    dateFin: '',
+    clientId: '',
+    statut: '',
+    produitNom: ''
+  });
+  
+
   // ==================== FONCTIONS DE CHARGEMENT ====================
   
 
+  const resetFilters = () => {
+    setFilters({
+      dateDebut: '',
+      dateFin: '',
+      clientId: '',
+      statut: '',
+      produitNom: ''
+    });
+  };
+
+  const statutsOptions = ['en attente', 'en cours', 'livrée', 'annulée'];
+  
   const fetchCommandes = useCallback(async () => {
     setLoading(true);
     try {
@@ -138,6 +160,30 @@ export default function CommandesPage() {
       setLoading(false);
     }
   }, [showNotif]);
+
+  const filteredCommandes = useMemo(() => {
+    return commandes.filter(cmd => {
+      // Filtre par date de début
+      if (filters.dateDebut && new Date(cmd.date) < new Date(filters.dateDebut)) return false;
+      // Filtre par date de fin
+      if (filters.dateFin && new Date(cmd.date) > new Date(filters.dateFin)) return false;
+      // Filtre par client
+      if (filters.clientId && cmd.contactId != filters.clientId) return false;
+      // Filtre par statut
+      if (filters.statut && cmd.statut !== filters.statut) return false;
+      // Filtre par produit (recherche dans les noms de produits de la commande)
+      if (filters.produitNom) {
+        const searchTerm = filters.produitNom.toLowerCase();
+        const hasProduct = cmd.produits.some(p => 
+          p.produitNom && p.produitNom.toLowerCase().includes(searchTerm)
+        );
+        if (!hasProduct) return false;
+      }
+      return true;
+    });
+  }, [commandes, filters]);
+
+  
 
   // Modifiez la fonction fetchContacts :
 
@@ -290,6 +336,32 @@ export default function CommandesPage() {
     fetchProduits();
     fetchStats();
   }, [fetchCommandes, fetchContacts, fetchProduits, fetchStats]);
+
+  const filteredStats = useMemo(() => {
+    const total_commandes = filteredCommandes.length;
+    const chiffre_affaires = filteredCommandes
+      .filter(cmd => cmd.statut === 'livrée')
+      .reduce((sum, cmd) => sum + (cmd.total || 0), 0);
+    const moyenne_commande = total_commandes > 0
+      ? filteredCommandes.reduce((sum, cmd) => sum + (cmd.total || 0), 0) / total_commandes
+      : 0;
+    const en_cours = filteredCommandes.filter(cmd => cmd.statut === 'en cours').length;
+    const livrees = filteredCommandes.filter(cmd => cmd.statut === 'livrée').length;
+    const en_attente = filteredCommandes.filter(cmd => cmd.statut === 'en attente').length;
+    const annulees = filteredCommandes.filter(cmd => cmd.statut === 'annulée').length;
+  
+    return {
+      total_commandes,
+      chiffre_affaires,
+      moyenne_commande,
+      en_cours,
+      livrees,
+      en_attente,
+      annulees
+    };
+  }, [filteredCommandes]);
+
+  
 
   // ==================== NOUVELLES FONCTIONS POUR GÉNÉRATION DE DOCUMENTS ====================
   
@@ -888,8 +960,92 @@ export default function CommandesPage() {
         </Button>
       </Box>
 
+      {/* Barre de filtres */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} sm={6} md={2}>
+            <TextField
+              label="Date début"
+              type="date"
+              value={filters.dateDebut}
+              onChange={(e) => setFilters({...filters, dateDebut: e.target.value})}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+              size="small"
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={2}>
+            <TextField
+              label="Date fin"
+              type="date"
+              value={filters.dateFin}
+              onChange={(e) => setFilters({...filters, dateFin: e.target.value})}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+              size="small"
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={2}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Client</InputLabel>
+              <Select
+                value={filters.clientId}
+                label="Client"
+                onChange={(e) => setFilters({...filters, clientId: e.target.value})}
+              >
+                <MenuItem value="">Tous</MenuItem>
+                {contacts.map(contact => (
+                  <MenuItem key={contact.id} value={contact.id}>
+                    {contact.nom} {contact.prenom}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} sm={6} md={2}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Statut</InputLabel>
+              <Select
+                value={filters.statut}
+                label="Statut"
+                onChange={(e) => setFilters({...filters, statut: e.target.value})}
+              >
+                <MenuItem value="">Tous</MenuItem>
+                {statutsOptions.map(statut => (
+                  <MenuItem key={statut} value={statut}>
+                    {statut}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} sm={6} md={2}>
+            <TextField
+              label="Produit"
+              value={filters.produitNom}
+              onChange={(e) => setFilters({...filters, produitNom: e.target.value})}
+              fullWidth
+              size="small"
+              placeholder="Nom du produit"
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={2}>
+            <Button
+              variant="outlined"
+              onClick={resetFilters}
+              fullWidth
+              size="medium"
+            >
+              Réinitialiser
+            </Button>
+          </Grid>
+        </Grid>
+      </Paper>
+
+
+
       {/* Cartes statistiques */}
-      {stats && (
+      {filteredStats && (
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12} sm={6} md={3}>
             <Card>
@@ -899,7 +1055,7 @@ export default function CommandesPage() {
                     <CartIcon />
                   </Avatar>
                   <Box>
-                    <Typography variant="h6">{stats.total_commandes}</Typography>
+                    <Typography variant="h6">{filteredStats.total_commandes}</Typography>
                     <Typography variant="caption" color="text.secondary">
                       Commandes totales
                     </Typography>
@@ -916,7 +1072,7 @@ export default function CommandesPage() {
                     <MoneyIcon />
                   </Avatar>
                   <Box>
-                    <Typography variant="h6">{formatCurrency(stats.chiffre_affaires)}</Typography>
+                    <Typography variant="h6">{formatCurrency(filteredStats.chiffre_affaires)}</Typography>
                     <Typography variant="caption" color="text.secondary">
                       Chiffre d'affaires
                     </Typography>
@@ -933,7 +1089,7 @@ export default function CommandesPage() {
                     <ShippingIcon />
                   </Avatar>
                   <Box>
-                    <Typography variant="h6">{stats.en_cours}</Typography>
+                    <Typography variant="h6">{filteredStats.en_cours}</Typography>
                     <Typography variant="caption" color="text.secondary">
                       En cours
                     </Typography>
@@ -950,7 +1106,7 @@ export default function CommandesPage() {
                     <TrendingIcon />
                   </Avatar>
                   <Box>
-                    <Typography variant="h6">{formatCurrency(stats.moyenne_commande)}</Typography>
+                    <Typography variant="h6">{formatCurrency(filteredStats.moyenne_commande)}</Typography>
                     <Typography variant="caption" color="text.secondary">
                       Moyenne par commande
                     </Typography>
@@ -978,7 +1134,7 @@ export default function CommandesPage() {
           </TableHead>
 
           <TableBody>
-            {commandes.map(cmd => (
+            {filteredCommandes.map(cmd => (
               <React.Fragment key={cmd.id}>
                 <TableRow hover>
                   <TableCell>
@@ -1255,22 +1411,30 @@ export default function CommandesPage() {
         </Table>
 
         {/* Message si aucune commande */}
-        {commandes.length === 0 && !loading && (
+        {filteredCommandes.length === 0 && !loading && (
           <Box textAlign="center" py={8}>
             <CartIcon sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
             <Typography variant="h6" color="text.secondary" gutterBottom>
               Aucune commande trouvée
             </Typography>
             <Typography variant="body2" color="text.secondary" paragraph>
-              Commencez par créer votre première commande
+              {commandes.length > 0 
+                ? "Aucune commande ne correspond aux filtres sélectionnés." 
+                : "Commencez par créer votre première commande"}
             </Typography>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={handleOpenAddDialog}
-            >
-              Créer votre première commande
-            </Button>
+            {commandes.length > 0 ? (
+              <Button variant="outlined" onClick={resetFilters}>
+                Réinitialiser les filtres
+              </Button>
+            ) : (
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={handleOpenAddDialog}
+              >
+                Créer votre première commande
+              </Button>
+            )}
           </Box>
         )}
       </Paper>
