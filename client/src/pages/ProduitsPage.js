@@ -450,7 +450,7 @@ export default function ProduitsPage() {
 
       // Extraction sécurisée du produit
       const newProduct = res.data?.data || res.data;
-      setProduits(prev => [res.data, ...prev]);
+      setProduits(prev => [newProduct, ...prev]);
       
       // Ajoute la catégorie si elle n'existe pas
       if (!categories.includes(categorie.trim())) {
