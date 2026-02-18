@@ -10,7 +10,7 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, Grid,
   Snackbar, CircularProgress, Select, MenuItem, FormControl, InputLabel,
   Card, CardContent, Tooltip, Divider, Autocomplete, TablePagination,
-  Drawer, useMediaQuery, useTheme, Tabs, Tab
+  Drawer, useMediaQuery, useTheme, Tabs, Tab, Badge
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -34,6 +34,8 @@ import {
 import MuiAlert from '@mui/material/Alert';
 import ValidatedTextField from '../components/ValidatedTextField';
 import { validateProduct, validateFile } from '../utils/validation';
+import ProductDetailsDialog from '../components/ProductDetailsDialog';
+import StockChip from '../components/StockChip';
 
 
 // ==================== COMPOSANTS RÉUTILISABLES ====================
@@ -81,51 +83,66 @@ const StockChip = ({ stock }) => {
 };
 
 // Composant carte produit pour le mode grid
-const ProductCard = ({ produit, onEdit, onDelete, buildImageUrl }) => (
-  <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-    <Box sx={{ position: 'relative', pt: '75%' }}>
-      <img
-        src={buildImageUrl(produit.image)}
-        alt={produit.nom}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover'
-        }}
-        onError={(e) => {
-          e.currentTarget.onerror = null;
-          e.currentTarget.src = '/fallback-image.png';
-        }}
-      />
-    </Box>
-    <CardContent sx={{ flexGrow: 1, p: 2 }}>
-      <Typography gutterBottom variant="h6" component="h3" noWrap>
-        {produit.nom}
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-        {produit.categorie || 'Non catégorisé'}
-      </Typography>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h6" color="primary">
-          {parseFloat(produit.prix || 0).toFixed()} Fcfa
-        </Typography>
-        <StockChip stock={produit.stock} />
-      </Box>
-      <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-        <Button size="small" onClick={() => onEdit(produit)} fullWidth>
-          <EditIcon fontSize="small" /> Modifier
-        </Button>
-        <Button size="small" color="error" onClick={() => onDelete(produit.id)} fullWidth>
-          <DeleteIcon fontSize="small" /> Supprimer
-        </Button>
-      </Stack>
-    </CardContent>
-  </Card>
-);
+const ProductCard = ({ produit, onEdit, onDelete, buildImageUrl, onClick }) => {
+  // Déterminer l'image à afficher (première du tableau ou image unique)
+  const imageSrc = produit.images?.[0] || produit.image || null;
 
+  return (
+    <Card
+      onClick={onClick}
+      sx={{ cursor: 'pointer', height: '100%', display: 'flex', flexDirection: 'column' }}
+    >
+      <Box sx={{ position: 'relative', pt: '75%' }}>
+        <img
+          src={imageSrc ? buildImageUrl(imageSrc) : '/fallback-image.png'}
+          alt={produit.nom}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover'
+          }}
+          onError={(e) => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = '/fallback-image.png';
+          }}
+        />
+        {/* Badge optionnel pour indiquer le nombre d'images */}
+        {produit.images?.length > 1 && (
+          <Badge
+            badgeContent={produit.images.length}
+            color="primary"
+            sx={{ position: 'absolute', top: 8, right: 8 }}
+          />
+        )}
+      </Box>
+      <CardContent sx={{ flexGrow: 1, p: 2 }}>
+        <Typography gutterBottom variant="h6" component="h3" noWrap>
+          {produit.nom}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          {produit.categorie || 'Non catégorisé'}
+        </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6" color="primary">
+            {parseFloat(produit.prix || 0).toFixed()} Fcfa
+          </Typography>
+          <StockChip stock={produit.stock} />
+        </Box>
+        <Stack direction="row" spacing={1} sx={{ mt: 2 }} onClick={(e) => e.stopPropagation()}>
+          <Button size="small" onClick={() => onEdit(produit)} fullWidth>
+            <EditIcon fontSize="small" /> Modifier
+          </Button>
+          <Button size="small" color="error" onClick={() => onDelete(produit.id)} fullWidth>
+            <DeleteIcon fontSize="small" /> Supprimer
+          </Button>
+        </Stack>
+      </CardContent>
+    </Card>
+  );
+};
 // ==================== CONFIGURATION ====================
 const API_ORIGIN = process.env.REACT_APP_API_ORIGIN || 'http://localhost:5000';
 const API_BASE = `${API_ORIGIN}/api`;
@@ -168,6 +185,7 @@ export default function ProduitsPage() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [openDetailsModal, setOpenDetailsModal] = useState(false);
   
+  
   // Filtres et recherche
   const [filterCategorie, setFilterCategorie] = useState(null);
   const [search, setSearch] = useState('');
@@ -193,6 +211,12 @@ export default function ProduitsPage() {
   // Affiche une notification
   const showNotif = (message, type = 'success') => {
     setNotif({ open: true, message, type });
+  };
+
+  // Fonction pour ouvrir le modal
+  const handleProductClick = (produit) => {
+    setSelectedProduct(produit);
+    setOpenDetailsModal(true);
   };
 
   // Construit l'URL complète d'une image
@@ -868,12 +892,21 @@ export default function ProduitsPage() {
             </TableHead>
             <TableBody>
               {visibleRows.map(produit => (
-                <TableRow key={produit.id} hover>
+                <TableRow
+                  key={produit.id}
+                  hover
+                  onClick={() => handleProductClick(produit)}
+                  sx={{ cursor: 'pointer' }}
+                >
                   <TableCell>
                     <Box display="flex" alignItems="center">
-                      <Badge badgeContent={produit.images?.length || (produit.image ? 1 : 0)} color="primary" overlap="circular">
-                        <Avatar 
-                          src={buildImageUrl(produit.images?.[0] || produit.image)} 
+                      <Badge
+                        badgeContent={produit.images?.length || (produit.image ? 1 : 0)}
+                        color="primary"
+                        overlap="circular"
+                      >
+                        <Avatar
+                          src={buildImageUrl(produit.images?.[0] || produit.image)}
                           sx={{ width: 50, height: 50, mr: 2 }}
                           variant="rounded"
                         >
@@ -881,7 +914,9 @@ export default function ProduitsPage() {
                         </Avatar>
                       </Badge>
                       <Box>
-                        <Typography variant="body1" fontWeight="medium">{produit.nom}</Typography>
+                        <Typography variant="body1" fontWeight="medium">
+                          {produit.nom}
+                        </Typography>
                         <Typography variant="caption" color="text.secondary">
                           {produit.description?.substring(0, 50)}...
                         </Typography>
@@ -912,13 +947,16 @@ export default function ProduitsPage() {
                       {produit.codeBarres || '-'}
                     </Typography>
                   </TableCell>
-                  <TableCell align="center">
+                  <TableCell align="center" onClick={(e) => e.stopPropagation()}>
                     <Stack direction="row" spacing={1} justifyContent="center">
                       <Tooltip title="Modifier">
                         <IconButton
                           size="small"
                           color="primary"
-                          onClick={() => handleOpenEditDialog(produit)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenEditDialog(produit);
+                          }}
                         >
                           <EditIcon fontSize="small" />
                         </IconButton>
@@ -927,7 +965,10 @@ export default function ProduitsPage() {
                         <IconButton
                           size="small"
                           color="error"
-                          onClick={() => handleDeleteProduit(produit.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteProduit(produit.id);
+                          }}
                         >
                           <DeleteIcon fontSize="small" />
                         </IconButton>
@@ -959,11 +1000,12 @@ export default function ProduitsPage() {
         <Grid container spacing={2}>
           {visibleRows.map(produit => (
             <Grid item xs={6} sm={4} md={3} key={produit.id}>
-              <ProductCard 
+              <ProductCard
                 produit={produit}
                 onEdit={handleOpenEditDialog}
                 onDelete={handleDeleteProduit}
                 buildImageUrl={buildImageUrl}
+                onClick={() => handleProductClick(produit)}
               />
             </Grid>
           ))}
@@ -1211,6 +1253,8 @@ export default function ProduitsPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+              
 
       {/* ==================== NOTIFICATIONS ==================== */}
       <Snackbar
