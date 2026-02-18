@@ -2,7 +2,7 @@
 // ✅ VERSION COMPLÈTE AVEC TOUTES LES FONCTIONNALITÉS
 // ✅ MODIFICATION : Ajout des boutons Devis/Facture dans la section détails
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Table, TableBody, TableCell, TableHead, TableRow,
   Button, Stack, Typography, CircularProgress, Chip, Box,
