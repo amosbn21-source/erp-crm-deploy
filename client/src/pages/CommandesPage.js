@@ -137,7 +137,7 @@ export default function CommandesPage() {
           contactEmail: cmd.contact_email || cmd.contactEmail || '',
           contactTelephone: cmd.contact_telephone || cmd.contactTelephone || '',
           contactId: cmd.contact_id || cmd.contactId,
-          total: cmd.total_ht || cmd.total || 0,            // ← on utilise total_ht comme total
+          total: parseFloat(cmd.total_ht || cmd.total) || 0,
           date: cmd.date || cmd.created_at,
           produits: Array.isArray(cmd.produits) ? cmd.produits.map(p => ({
             ...p,
