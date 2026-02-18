@@ -399,7 +399,7 @@ router.get('/stats', async (req, res) => {
       SELECT 
         COUNT(*) as total_commandes,
         COALESCE(SUM(CASE WHEN statut = 'livrée' THEN total_ht ELSE 0 END), 0) as chiffre_affaires,
-        COALESCE(AVG(total), 0) as moyenne_commande,
+        COALESCE(AVG(total_ht), 0) as moyenne_commande,
         COUNT(CASE WHEN statut = 'livrée' THEN 1 END) as livrees,
         COUNT(CASE WHEN statut = 'en cours' THEN 1 END) as en_cours,
         COUNT(CASE WHEN statut = 'en attente' THEN 1 END) as en_attente,
