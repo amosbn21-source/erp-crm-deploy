@@ -407,6 +407,7 @@ router.get('/stats', async (req, res) => {
         MIN(date) as premiere_commande,
         MAX(date) as derniere_commande
       FROM "${schemaName}".commandes
+      `);
     
     const topProduits = await db.query(`
       SELECT 
