@@ -1221,6 +1221,15 @@ export default function ProduitsPage() {
         </DialogActions>
       </Dialog>
 
+      {/* ==================== MODAL DE DÉTAILS ==================== */}
+      <ProductDetailsDialog
+        open={openDetailsModal}
+        produit={selectedProduct}
+        onClose={() => setOpenDetailsModal(false)}
+        buildImageUrl={buildImageUrl}
+        onEdit={handleOpenEditDialog}
+      />
+
               
 
       {/* ==================== NOTIFICATIONS ==================== */}
