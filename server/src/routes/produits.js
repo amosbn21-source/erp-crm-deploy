@@ -88,7 +88,7 @@ const ensureProduitsTable = async (schemaName, pool) => {
           description TEXT,
           prix DECIMAL(10, 2) NOT NULL,
           stock INTEGER DEFAULT 0,
-          image VARCHAR(255),
+          image TEXT,
           code_barres VARCHAR(50),
           categorie VARCHAR(100),
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -96,6 +96,13 @@ const ensureProduitsTable = async (schemaName, pool) => {
         )
       `);
     }
+
+    // Après la création, s'assurer que le type est TEXT
+    await pool.query(`
+      ALTER TABLE "${schemaName}".produits 
+      ALTER COLUMN image TYPE TEXT
+    `);
+    
     
     return true;
   } catch (error) {
@@ -132,12 +139,26 @@ router.get('/', async (req, res) => {
     query += ` ORDER BY id DESC`;
     
     const result = await pool.query(query, params);
+    const rows = result.rows.map(row => {
+      let imagesArray = [];
+      try {
+        imagesArray = JSON.parse(row.image || '[]');
+      } catch {
+        // Si ce n'est pas du JSON, c'est probablement une ancienne donnée avec une seule image
+        imagesArray = row.image ? [row.image] : [];
+      }
+      return {
+        ...row,
+        images: imagesArray,
+        image: imagesArray[0] || null  // pour compatibilité
+      };
+    });
     
     console.log(`✅ [PRODUITS] ${result.rows.length} produits trouvés dans ${userSchema}`);
     
     res.json({
       success: true,
-      data: result.rows,
+      data: rows,
       count: result.rows.length,
       schema: userSchema
     });
@@ -169,6 +190,17 @@ router.get('/:id', validateId, async (req, res) => {
   const { id } = req.params;
   const userSchema = req.userSchema;
   const pool = req.app.locals.pool;
+  const product = result.rows[0];
+  let imagesArray = [];
+  try {
+    imagesArray = JSON.parse(product.image || '[]');
+  } catch {
+    imagesArray = product.image ? [product.image] : [];
+  }
+  product.images = imagesArray;
+  product.image = imagesArray[0] || null;
+  
+  res.json({ success: true, data: product });
   
   console.log(`🔐 [PRODUITS] GET /${id} pour schéma: ${userSchema}`);
   
@@ -277,6 +309,10 @@ router.put('/:id', upload.array('images', 5), validateId, async (req, res) => {
   console.log(`🔐 [PRODUITS] PUT /${id} pour schéma: ${userSchema}`);
   
   try {
+    // ✅ S'assurer que la table existe
+    await ensureProduitsTable(userSchema, pool);
+
+    
     // Si nouvelle image, supprimer l'ancienne
     if (newImage) {
       const oldResult = await pool.query(
@@ -349,24 +385,34 @@ router.delete('/:id', validateId, async (req, res) => {
   console.log(`🔐 [PRODUITS] DELETE /${id} pour schéma: ${userSchema}`);
   
   try {
+    await ensureProduitsTable(userSchema, pool);
     // Récupérer l'image avant suppression
     const produitResult = await pool.query(
       `SELECT image FROM "${userSchema}".produits WHERE id = $1`,
       [id]
     );
-    
     if (produitResult.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Produit introuvable'
-      });
+      return res.status(404).json({ success: false, error: 'Produit introuvable' });
+    }
+    
+    let images = [];
+    try {
+      images = JSON.parse(produitResult.rows[0].image || '[]');
+    } catch {
+      images = produitResult.rows[0].image ? [produitResult.rows[0].image] : [];
+    }
+
+    // Supprimer chaque fichier
+    for (const img of images) {
+      const imagePath = path.join(uploadDir, img);
+      if (fs.existsSync(imagePath)) {
+        fs.unlinkSync(imagePath);
+        console.log(`🗑️ Image supprimée: ${img}`);
+      }
     }
     
     // Supprimer le produit
-    const deleteResult = await pool.query(
-      `DELETE FROM "${userSchema}".produits WHERE id = $1 RETURNING *`,
-      [id]
-    );
+    const deleteResult = await pool.query(`DELETE FROM "${userSchema}".produits WHERE id = $1`, [id]);;
     
     // Supprimer l'image associée si elle existe
     if (produitResult.rows[0].image) {
@@ -417,6 +463,8 @@ router.put('/:id/stock', validateId, async (req, res) => {
   }
   
   try {
+    // ✅ S'assurer que la table existe
+    await ensureProduitsTable(userSchema, pool);
     const result = await pool.query(
       `UPDATE "${userSchema}".produits 
        SET stock = GREATEST(0, stock + $1), updated_at = CURRENT_TIMESTAMP
