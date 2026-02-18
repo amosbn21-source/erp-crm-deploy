@@ -637,8 +637,6 @@ export default function CommandesPage() {
     setDate(new Date().toISOString().slice(0, 16));
     setStatut('en attente');
     setTotal(0);
-    setTotalHT(0);
-    setTva(0);
     setContactId(contacts.length > 0 ? contacts[0].id : '');
     setProduitsSelectionnes([]);
     setOpenDialog(true);
@@ -649,8 +647,6 @@ export default function CommandesPage() {
     setDate(commande.date ? commande.date.slice(0, 16) : new Date().toISOString().slice(0, 16));
     setStatut(commande.statut || 'en attente');
     setTotal(commande.total || 0);
-    setTotalHT(commande.totalHT || 0);
-    setTva(commande.tva || 0);
     setContactId(commande.contactId || '');
     
     if (commande.produits && Array.isArray(commande.produits)) {
@@ -1033,7 +1029,6 @@ export default function CommandesPage() {
                     <Typography fontWeight="bold" color="primary">
                       {formatCurrency(cmd.total)}
                     </Typography>
-                  </TableCell>
                   </TableCell>
                   <TableCell align="center">
                     <Stack direction="row" spacing={1} justifyContent="center">
