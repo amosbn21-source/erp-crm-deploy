@@ -27,10 +27,8 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ dest: 'uploads/' });
-app.post('/api/produits', upload.array('images', 5), (req, res) => {
-  // req.files contient un tableau de fichiers
-});
+const upload = multer({ storage: storage });
+
 
 // ✅ Middleware pour obtenir le schéma utilisateur (déjà défini par enforceDataIsolation)
 router.use((req, res, next) => {
@@ -213,10 +211,12 @@ router.get('/:id', validateId, async (req, res) => {
 });
 
 // ✅ POST: créer un nouveau produit avec image optionnelle
-router.post('/', upload.single('image'), async (req, res) => {
+router.post('/', upload.array('images', 5), async (req, res) => {
   const userSchema = req.userSchema;
   const pool = req.app.locals.pool;
   const { nom, description, prix, stock, codeBarres, categorie } = req.body;
+
+  const imageFilename = req.files && req.files.length > 0 ? req.files[0].filename : null;
   
   console.log(`🔐 [PRODUITS] POST / pour schéma: ${userSchema}`);
   console.log('📦 Données reçues:', { nom, description, prix, stock, codeBarres, categorie });
@@ -267,12 +267,12 @@ router.post('/', upload.single('image'), async (req, res) => {
 });
 
 // ✅ PUT: modifier un produit existant
-router.put('/:id', upload.single('image'), validateId, async (req, res) => {
+router.put('/:id', upload.array('images', 5), validateId, async (req, res) => {
   const { id } = req.params;
   const userSchema = req.userSchema;
   const pool = req.app.locals.pool;
   const { nom, description, prix, stock, codeBarres, categorie } = req.body;
-  const newImage = req.file ? req.file.filename : null;
+  const newImage = req.files && req.files.length > 0 ? req.files[0].filename : null;
   
   console.log(`🔐 [PRODUITS] PUT /${id} pour schéma: ${userSchema}`);
   
