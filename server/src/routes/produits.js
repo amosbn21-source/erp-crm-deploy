@@ -27,9 +27,9 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ 
-  storage, 
-  limits: { fileSize: 5 * 1024 * 1024 }
+const upload = multer({ dest: 'uploads/' });
+app.post('/api/produits', upload.array('images', 5), (req, res) => {
+  // req.files contient un tableau de fichiers
 });
 
 // ✅ Middleware pour obtenir le schéma utilisateur (déjà défini par enforceDataIsolation)
