@@ -21,6 +21,7 @@ import StockChip from './StockChip'; // si vous avez extrait ce composant, sinon
 // Pour simplifier, je vais supposer que StockChip est exporté depuis un fichier commun.
 
 const ProductDetailsDialog = ({ open, produit, onClose, buildImageUrl, onEdit }) => {
+  console.log('🎯 Modal - open:', open, 'produit:', produit);
   const [selectedImage, setSelectedImage] = useState(0);
 
   if (!produit) return null;
