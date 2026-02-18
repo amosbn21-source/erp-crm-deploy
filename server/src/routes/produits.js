@@ -144,13 +144,12 @@ router.get('/', async (req, res) => {
       try {
         imagesArray = JSON.parse(row.image || '[]');
       } catch {
-        // Si ce n'est pas du JSON, c'est probablement une ancienne donnée avec une seule image
         imagesArray = row.image ? [row.image] : [];
       }
       return {
         ...row,
         images: imagesArray,
-        image: imagesArray[0] || null  // pour compatibilité
+        image: imagesArray[0] || null   // garde la première image pour compatibilité
       };
     });
     
@@ -190,26 +189,18 @@ router.get('/:id', validateId, async (req, res) => {
   const { id } = req.params;
   const userSchema = req.userSchema;
   const pool = req.app.locals.pool;
-  const product = result.rows[0];
-  let imagesArray = [];
-  try {
-    imagesArray = JSON.parse(product.image || '[]');
-  } catch {
-    imagesArray = product.image ? [product.image] : [];
-  }
-  product.images = imagesArray;
-  product.image = imagesArray[0] || null;
-  
-  res.json({ success: true, data: product });
-  
+
   console.log(`🔐 [PRODUITS] GET /${id} pour schéma: ${userSchema}`);
-  
+
   try {
+    // S'assurer que la table existe (optionnel mais recommandé)
+    await ensureProduitsTable(userSchema, pool);
+
     const result = await pool.query(
       `SELECT * FROM "${userSchema}".produits WHERE id = $1`,
       [id]
     );
-    
+
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
@@ -217,16 +208,32 @@ router.get('/:id', validateId, async (req, res) => {
         schema: userSchema
       });
     }
+
+    const product = result.rows[0];
     
+    // Transformer la colonne 'image' (qui peut être JSON ou simple chaîne) en tableau 'images'
+    let imagesArray = [];
+    try {
+      imagesArray = JSON.parse(product.image || '[]');
+    } catch {
+      // Si ce n'est pas du JSON valide, c'est probablement une ancienne donnée avec une seule image
+      imagesArray = product.image ? [product.image] : [];
+    }
+
+    // Ajouter le champ 'images' et mettre à jour 'image' pour la compatibilité
+    product.images = imagesArray;
+    product.image = imagesArray[0] || null;
+
     res.json({
       success: true,
-      data: result.rows[0]
+      data: product
     });
-    
+
   } catch (error) {
     console.error(`❌ Erreur GET /produits/${id} pour ${userSchema}:`, error);
-    
+
     if (error.message.includes('n\'existe pas') || error.code === '42P01') {
+      // Si la table n'existe pas, on la crée et on renvoie une erreur 404
       await ensureProduitsTable(userSchema, pool);
       return res.status(404).json({
         success: false,
@@ -234,38 +241,35 @@ router.get('/:id', validateId, async (req, res) => {
         schema: userSchema
       });
     }
-    
+
     res.status(500).json({
       success: false,
       error: 'Erreur serveur'
     });
   }
 });
-
-// ✅ POST: créer un nouveau produit avec image optionnelle
+// ✅ POST: créer un nouveau produit avec plusieurs images
 router.post('/', upload.array('images', 5), async (req, res) => {
   const userSchema = req.userSchema;
   const pool = req.app.locals.pool;
   const { nom, description, prix, stock, codeBarres, categorie } = req.body;
 
-  const imageFilename = req.files && req.files.length > 0 ? req.files[0].filename : null;
-  
-  console.log(`🔐 [PRODUITS] POST / pour schéma: ${userSchema}`);
-  console.log('📦 Données reçues:', { nom, description, prix, stock, codeBarres, categorie });
-  
+  // Validation
   if (!nom || !prix || !categorie) {
     return res.status(400).json({
       success: false,
       error: 'Nom, prix et catégorie sont obligatoires'
     });
   }
-  
+
   try {
-    // S'assurer que la table existe
     await ensureProduitsTable(userSchema, pool);
-    
-    const imageFilename = req.file ? req.file.filename : null;
-    
+
+    // Récupérer tous les noms de fichiers uploadés
+    const imageFilenames = req.files ? req.files.map(f => f.filename) : [];
+    // Stocker sous forme de chaîne JSON
+    const imagesJson = JSON.stringify(imageFilenames);
+
     const result = await pool.query(
       `INSERT INTO "${userSchema}".produits 
        (nom, description, prix, stock, image, code_barres, categorie, created_at, updated_at)
@@ -276,66 +280,94 @@ router.post('/', upload.array('images', 5), async (req, res) => {
         description || '',
         parseFloat(prix) || 0,
         parseInt(stock) || 0,
-        imageFilename,
+        imagesJson,
         codeBarres || '',
         categorie
       ]
     );
-    
-    console.log(`✅ Produit créé dans ${userSchema}:`, result.rows[0].id);
-    
-    res.json({
-      success: true,
-      data: result.rows[0]
-    });
-    
+
+    // Transformer le produit pour ajouter le champ 'images'
+    const newProduct = result.rows[0];
+    let imagesArray = [];
+    try {
+      imagesArray = JSON.parse(newProduct.image || '[]');
+    } catch {
+      imagesArray = newProduct.image ? [newProduct.image] : [];
+    }
+    newProduct.images = imagesArray;
+    newProduct.image = imagesArray[0] || null;
+
+    console.log(`✅ Produit créé dans ${userSchema}:`, newProduct.id);
+    res.json({ success: true, data: newProduct });
+
   } catch (error) {
     console.error(`❌ Erreur POST /produits pour ${userSchema}:`, error);
-    res.status(500).json({
-      success: false,
-      error: 'Erreur lors de la création du produit'
-    });
+    res.status(500).json({ success: false, error: 'Erreur lors de la création du produit' });
   }
 });
 
-// ✅ PUT: modifier un produit existant
+// ✅ PUT: modifier un produit existant (gestion multiple images)
 router.put('/:id', upload.array('images', 5), validateId, async (req, res) => {
   const { id } = req.params;
   const userSchema = req.userSchema;
   const pool = req.app.locals.pool;
-  const { nom, description, prix, stock, codeBarres, categorie } = req.body;
-  const newImage = req.files && req.files.length > 0 ? req.files[0].filename : null;
-  
-  console.log(`🔐 [PRODUITS] PUT /${id} pour schéma: ${userSchema}`);
-  
+  const { nom, description, prix, stock, codeBarres, categorie, existingImages } = req.body;
+
+  // Parsing des images à conserver (envoyées par le frontend)
+  let imagesToKeep = [];
   try {
-    // ✅ S'assurer que la table existe
+    imagesToKeep = existingImages ? JSON.parse(existingImages) : [];
+  } catch (e) {
+    imagesToKeep = [];
+  }
+
+  console.log(`🔐 [PRODUITS] PUT /${id} pour schéma: ${userSchema}`);
+  console.log('Images à conserver:', imagesToKeep);
+
+  try {
     await ensureProduitsTable(userSchema, pool);
 
-    
-    // Si nouvelle image, supprimer l'ancienne
-    if (newImage) {
-      const oldResult = await pool.query(
-        `SELECT image FROM "${userSchema}".produits WHERE id = $1`,
-        [id]
-      );
-      
-      if (oldResult.rows.length > 0 && oldResult.rows[0].image) {
-        const oldImagePath = path.join(uploadDir, oldResult.rows[0].image);
-        if (fs.existsSync(oldImagePath)) {
-          fs.unlinkSync(oldImagePath);
-          console.log(`🗑️ Ancienne image supprimée: ${oldResult.rows[0].image}`);
-        }
+    // Récupérer l'ancien produit pour connaître les images actuelles
+    const oldResult = await pool.query(
+      `SELECT image FROM "${userSchema}".produits WHERE id = $1`,
+      [id]
+    );
+    if (oldResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Produit introuvable' });
+    }
+
+    // Anciennes images (parse)
+    let oldImages = [];
+    try {
+      oldImages = JSON.parse(oldResult.rows[0].image || '[]');
+    } catch {
+      oldImages = oldResult.rows[0].image ? [oldResult.rows[0].image] : [];
+    }
+
+    // Nouvelles images uploadées
+    const newImageFilenames = req.files ? req.files.map(f => f.filename) : [];
+
+    // Fusion : images conservées + nouvelles
+    const updatedImages = [...imagesToKeep, ...newImageFilenames];
+
+    // Supprimer les fichiers qui ne sont plus dans la liste finale
+    const imagesToDelete = oldImages.filter(img => !updatedImages.includes(img));
+    for (const img of imagesToDelete) {
+      const imagePath = path.join(uploadDir, img);
+      if (fs.existsSync(imagePath)) {
+        fs.unlinkSync(imagePath);
+        console.log(`🗑️ Image supprimée: ${img}`);
       }
     }
-    
+
+    // Mise à jour de la base avec la nouvelle liste JSON
     const result = await pool.query(
       `UPDATE "${userSchema}".produits
        SET nom = $1,
            description = $2,
            prix = $3,
            stock = $4,
-           image = COALESCE($5, image),
+           image = $5,
            code_barres = $6,
            categorie = $7,
            updated_at = CURRENT_TIMESTAMP
@@ -346,33 +378,30 @@ router.put('/:id', upload.array('images', 5), validateId, async (req, res) => {
         description || '',
         parseFloat(prix) || 0,
         parseInt(stock) || 0,
-        newImage,
+        JSON.stringify(updatedImages),
         codeBarres || '',
         categorie,
         id
       ]
     );
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Produit introuvable'
-      });
+
+    // Transformer le produit pour le frontend
+    const updatedProduct = result.rows[0];
+    let imagesArray = [];
+    try {
+      imagesArray = JSON.parse(updatedProduct.image || '[]');
+    } catch {
+      imagesArray = updatedProduct.image ? [updatedProduct.image] : [];
     }
-    
+    updatedProduct.images = imagesArray;
+    updatedProduct.image = imagesArray[0] || null;
+
     console.log(`✅ Produit ${id} modifié dans ${userSchema}`);
-    
-    res.json({
-      success: true,
-      data: result.rows[0]
-    });
-    
+    res.json({ success: true, data: updatedProduct });
+
   } catch (error) {
     console.error(`❌ Erreur PUT /produits/${id} pour ${userSchema}:`, error);
-    res.status(500).json({
-      success: false,
-      error: 'Erreur lors de la modification du produit'
-    });
+    res.status(500).json({ success: false, error: 'Erreur lors de la modification du produit' });
   }
 });
 
