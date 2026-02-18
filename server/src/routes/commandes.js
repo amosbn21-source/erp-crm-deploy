@@ -398,7 +398,7 @@ router.get('/stats', async (req, res) => {
     const stats = await db.query(`
       SELECT 
         COUNT(*) as total_commandes,
-        COALESCE(SUM(CASE WHEN statut = 'livrée' THEN total ELSE 0 END), 0) as chiffre_affaires,
+        COALESCE(SUM(CASE WHEN statut = 'livrée' THEN total_ht ELSE 0 END), 0) as chiffre_affaires,
         COALESCE(AVG(total), 0) as moyenne_commande,
         COUNT(CASE WHEN statut = 'livrée' THEN 1 END) as livrees,
         COUNT(CASE WHEN statut = 'en cours' THEN 1 END) as en_cours,
@@ -407,7 +407,6 @@ router.get('/stats', async (req, res) => {
         MIN(date) as premiere_commande,
         MAX(date) as derniere_commande
       FROM "${schemaName}".commandes
-    `);
     
     const topProduits = await db.query(`
       SELECT 
