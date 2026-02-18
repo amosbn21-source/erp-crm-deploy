@@ -45,42 +45,7 @@ const Alert = React.forwardRef(function Alert(props, ref) {
   return <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />;
 });
 
-// Composant pour l'indicateur de stock
-const StockChip = ({ stock }) => {
-  const stockValue = parseInt(stock) || 0;
-  
-  if (stockValue > 10) {
-    return (
-      <Chip
-        icon={<InStockIcon />}
-        label={`${stockValue} en stock`}
-        size="small"
-        color="success"
-        variant="outlined"
-      />
-    );
-  } else if (stockValue > 0) {
-    return (
-      <Chip
-        icon={<LowStockIcon />}
-        label={`${stockValue} restants`}
-        size="small"
-        color="warning"
-        variant="outlined"
-      />
-    );
-  } else {
-    return (
-      <Chip
-        icon={<NoStockIcon />}
-        label="Rupture"
-        size="small"
-        color="error"
-        variant="outlined"
-      />
-    );
-  }
-};
+
 
 // Composant carte produit pour le mode grid
 const ProductCard = ({ produit, onEdit, onDelete, buildImageUrl, onClick }) => {
