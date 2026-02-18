@@ -99,7 +99,8 @@ const OrderFormDialog = ({ onClose, onSuccess, embedded = false }) => {
           quantite: p.quantite,
           prixUnitaire: p.prixUnitaire
         }))
-      };
+        // total sera recalculé par le backend
+      };;
 
       const res = await securePost('/commandes', commandeData);
       
@@ -303,53 +304,32 @@ const OrderFormDialog = ({ onClose, onSuccess, embedded = false }) => {
             </Typography>
             <Grid container spacing={1}>
               <Grid item xs={6}>
-                <Typography variant="body2">Nombre de produits:</Typography>
+                <Typography variant="body2">Nombre de produits :</Typography>
               </Grid>
               <Grid item xs={6} textAlign="right">
                 <Typography variant="body2" fontWeight="bold">
                   {formData.produits.length}
                 </Typography>
               </Grid>
-              
               <Grid item xs={6}>
-                <Typography variant="body2">Total articles:</Typography>
+                <Typography variant="body2">Articles totaux :</Typography>
               </Grid>
               <Grid item xs={6} textAlign="right">
                 <Typography variant="body2" fontWeight="bold">
                   {formData.produits.reduce((sum, p) => sum + p.quantite, 0)}
                 </Typography>
               </Grid>
-              
-              <Grid item xs={6}>
-                <Typography variant="body2">Total HT:</Typography>
-              </Grid>
-              <Grid item xs={6} textAlign="right">
-                <Typography variant="body2" fontWeight="bold">
-                  {totalHT.toFixed(0)} Fcfa
-                </Typography>
-              </Grid>
-              
-              <Grid item xs={6}>
-                <Typography variant="body2">TVA (20%):</Typography>
-              </Grid>
-              <Grid item xs={6} textAlign="right">
-                <Typography variant="body2" fontWeight="bold">
-                  {tva.toFixed(0)} Fcfa
-                </Typography>
-              </Grid>
-              
               <Grid item xs={12}>
                 <Divider sx={{ my: 1 }} />
               </Grid>
-              
               <Grid item xs={6}>
                 <Typography variant="body1" fontWeight="bold">
-                  Total TTC:
+                  Total :
                 </Typography>
               </Grid>
               <Grid item xs={6} textAlign="right">
                 <Typography variant="h6" color="primary" fontWeight="bold">
-                  {totalTTC.toFixed(0)} Fcfa
+                  {total.toFixed(0)} Fcfa
                 </Typography>
               </Grid>
             </Grid>
