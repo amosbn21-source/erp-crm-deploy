@@ -210,7 +210,7 @@ export default function ProduitsPage() {
     
     // Nettoyage des URLs d'objets
     return () => {
-      if (imagePreview) URL.revokeObjectURL(imagePreview);
+      imagePreviews.forEach(URL.revokeObjectURL);
     };
   }, []);
 
@@ -355,9 +355,9 @@ export default function ProduitsPage() {
   };
   
   const clearFile = () => {
-    if (imagePreview) URL.revokeObjectURL(imagePreview);
-    setImageFile(null);
-    setImagePreview(null);
+    imagePreviews.forEach(URL.revokeObjectURL);
+    setImageFiles([]);
+    setImagePreviews([]);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -371,7 +371,7 @@ export default function ProduitsPage() {
     setStock('');
     setCodeBarres('');
     setCategorie('');
-    setCurrentEditingImage(null);  // à supprimer si vous ne l'utilisez plus
+    
     // Nettoyer les états d'images multiples
     imagePreviews.forEach(URL.revokeObjectURL);
     setImageFiles([]);
@@ -1192,6 +1192,7 @@ export default function ProduitsPage() {
                   </Grid>
                 </Box>
               </Grid>
+              </Grid> 
           </Stack>
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
