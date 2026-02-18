@@ -293,7 +293,7 @@ export default function ProduitsPage() {
     try {
       const response = await securePost('/categories', { nom: trimmedCat }); 
       
-      const createdCat = response.data?.nom || trimmedCat;
+      const createdCat = response.data?.data?.nom || response.data?.nom || trimmedCat;
       
       setCategories(prev => {
         const newCats = Array.from(new Set([createdCat, ...prev]));
@@ -416,6 +416,9 @@ export default function ProduitsPage() {
         headers: { 'Content-Type': 'multipart/form-data',
          }
       });
+
+      // Extraction sécurisée du produit
+      const newProduct = res.data?.data || res.data;
       
       
       setProduits(prev => [res.data, ...prev]);
@@ -470,6 +473,11 @@ export default function ProduitsPage() {
       const res = await securePut(`/produits/${editingProduit.id}`, form, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
+
+      // Extraction sécurisée
+      const updatedProduct = res.data?.data || res.data;
+
+      
       
       setProduits(prev => prev.map(p => p.id === editingProduit.id ? res.data : p));
       
