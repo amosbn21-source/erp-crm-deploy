@@ -180,6 +180,7 @@ export default function ProduitsPage() {
 
   // Fonction pour ouvrir le modal
   const handleProductClick = (produit) => {
+    console.log('✅ Clic sur produit :', produit);
     setSelectedProduct(produit);
     setOpenDetailsModal(true);
   };
