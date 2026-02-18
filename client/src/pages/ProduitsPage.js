@@ -871,17 +871,17 @@ export default function ProduitsPage() {
                 <TableRow key={produit.id} hover>
                   <TableCell>
                     <Box display="flex" alignItems="center">
-                      <Avatar 
-                        src={buildImageUrl(produit.image)}
-                        sx={{ width: 50, height: 50, mr: 2 }}
-                        variant="rounded"
-                      >
-                        <InventoryIcon />
-                      </Avatar>
+                      <Badge badgeContent={produit.images?.length || (produit.image ? 1 : 0)} color="primary" overlap="circular">
+                        <Avatar 
+                          src={buildImageUrl(produit.images?.[0] || produit.image)} 
+                          sx={{ width: 50, height: 50, mr: 2 }}
+                          variant="rounded"
+                        >
+                          <ImageIcon />
+                        </Avatar>
+                      </Badge>
                       <Box>
-                        <Typography variant="body1" fontWeight="medium">
-                          {produit.nom}
-                        </Typography>
+                        <Typography variant="body1" fontWeight="medium">{produit.nom}</Typography>
                         <Typography variant="caption" color="text.secondary">
                           {produit.description?.substring(0, 50)}...
                         </Typography>
