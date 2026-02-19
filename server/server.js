@@ -122,6 +122,7 @@ console.log('📁 Dossier uploads:', UPLOADS_PATH);
 
     // Servir les fichiers statiques avec CORS
     app.use('/uploads', express.static(UPLOADS_PATH));
+    app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
     // ==================== MIDDLEWARE D'AUTHENTIFICATION ====================
